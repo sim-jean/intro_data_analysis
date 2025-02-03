@@ -13,7 +13,7 @@
 
 <meta name="date" content="2025-01-29" />
 
-<title>02_Data Cleaning</title>
+<title>01_Utilities</title>
 
 <script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
 // be compatible with the behavior of Pandoc < 2.8).
@@ -350,15 +350,52 @@ display: none;
 
 
 
-<h1 class="title toc-ignore">02_Data Cleaning</h1>
+<h1 class="title toc-ignore">01_Utilities</h1>
 <h4 class="author">Simon Jean</h4>
 <h4 class="date">2025-01-29</h4>
 
 </div>
 
 
-<div id="chargement-de-lenvironnement" class="section level2">
-<h2>Chargement de l’environnement</h2>
+<div id="set-up-de-larchitecture" class="section level2">
+<h2>Set up de l’architecture</h2>
+<p>Vous commencez par runner l’architecture :</p>
+<pre class="r"><code>if(!(&quot;here&quot; %in% installed.packages())){ # Vérifie si le package est déja installé
+  install.packages(&quot;here&quot;) # L&#39;installe si besoin
+}
+
+library(here) # Charge la bibliothèque</code></pre>
+<pre><code>## here() starts at C:/Users/jean/OneDrive/Desktop/Teaching/AgroParisTech/Master EEET/M1/Economie écologique/intro_data_analysis</code></pre>
+<pre class="r"><code>if(!dir.exists(here(&quot;scripts&quot;))){ # Vérifie si le chemin existe déja
+  dir.create(here(&quot;scripts&quot;))
+}
+
+print(paste(here(&quot;scripts&quot;), &quot; est créé&quot;))</code></pre>
+<pre><code>## [1] &quot;C:/Users/jean/OneDrive/Desktop/Teaching/AgroParisTech/Master EEET/M1/Economie écologique/intro_data_analysis/scripts  est créé&quot;</code></pre>
+<p>Puis :</p>
+<pre class="r"><code>if(!dir.exists(here(&quot;data&quot;))){ # Vérifie si le chemin existe déja
+  dir.create(here(&quot;data&quot;))
+  dir.create(here(&quot;data&quot;, &quot;raw&quot;)) # Crée des dossiers à l&#39;intérieur de \data
+  dir.create(here(&quot;data&quot;, &quot;processed&quot;))
+  dir.create(here(&quot;data&quot;, &quot;external&quot;))
+  
+  dir.create(here(&quot;results&quot;))
+  dir.create(here(&quot;results&quot;, &quot;figure&quot;))
+  dir.create(here(&quot;results&quot;, &quot;tables&quot;))
+
+  dir.create(here(&quot;docs&quot;))
+}
+
+print(&quot;Architecture à jour&quot;)</code></pre>
+<pre><code>## [1] &quot;Architecture à jour&quot;</code></pre>
+</div>
+<div id="set-up-de-lenvironnement" class="section level2">
+<h2>Set up de l’environnement</h2>
+<pre class="r"><code>if(!(&quot;renv&quot; %in% installed.packages())){
+  install.packages(&quot;renv&quot;)
+}
+
+library(renv)</code></pre>
 <pre><code>## 
 ## Attachement du package : &#39;renv&#39;</code></pre>
 <pre><code>## Les objets suivants sont masqués depuis &#39;package:stats&#39;:
@@ -370,753 +407,67 @@ display: none;
 <pre><code>## Les objets suivants sont masqués depuis &#39;package:base&#39;:
 ## 
 ##     autoload, load, remove</code></pre>
-<pre><code>## here() starts at C:/Users/jean/OneDrive/Desktop/Teaching/AgroParisTech/Master EEET/M1/Economie écologique/intro_data_analysis</code></pre>
+<pre class="r"><code>packages_to_install = c(&quot;rmarkdown&quot;, &quot;knitr&quot;, &quot;tidyverse&quot;, &quot;readxl&quot;, &quot;magrittr&quot;, &quot;stringr&quot;, &quot;stringdist&quot;, 
+                        &quot;factoextra&quot;, &quot;FactoMineR&quot;, &quot;sf&quot;, &quot;sp&quot;, &quot;here&quot;)
+
+install_and_load &lt;- function(packages) {
+  for (pkg in packages) { # Pour chaque package de la liste
+    if (!requireNamespace(pkg, quietly = TRUE)) { # Vérifie si le package est installé ou non et 
+      install.packages(pkg) # installe le cas échéant
+    }
+    library(pkg, character.only = TRUE) # Puis le charge
+  }
+}
+
+install_and_load(packages_to_install)</code></pre>
 <pre><code>## 
-## Attachement du package : &#39;dplyr&#39;</code></pre>
-<pre><code>## Les objets suivants sont masqués depuis &#39;package:stats&#39;:
-## 
-##     filter, lag</code></pre>
-<pre><code>## Les objets suivants sont masqués depuis &#39;package:base&#39;:
-## 
-##     intersect, setdiff, setequal, union</code></pre>
-<pre><code>## 
-## Attachement du package : &#39;purrr&#39;</code></pre>
-<pre><code>## L&#39;objet suivant est masqué depuis &#39;package:magrittr&#39;:
-## 
-##     set_names</code></pre>
+## Attachement du package : &#39;rmarkdown&#39;</code></pre>
 <pre><code>## L&#39;objet suivant est masqué depuis &#39;package:renv&#39;:
 ## 
-##     modify</code></pre>
-</div>
-<div id="chargement-des-données" class="section level2">
-<h2>Chargement des données</h2>
-<p><em>Note</em> : pour ouvrir un “code chunk”, vous pouvez taper
-<code>Ctrl + Alt + i</code></p>
-<p>On charge les données :</p>
-<pre class="r"><code>data_ = readxl::read_xlsx(here(&quot;data&quot;, &quot;raw&quot;, &quot;baie_somme_2025.xlsx&quot;))
-
-head(data_)</code></pre>
-<pre><code>## # A tibble: 6 × 16
-##   Horodateur          `Lieu de l&#39;entretien` `Jour de l&#39;entretien`
-##   &lt;dttm&gt;              &lt;chr&gt;                 &lt;dttm&gt;               
-## 1 2025-01-13 14:38:18 Hourdel               2025-01-13 00:00:00  
-## 2 2025-01-13 14:48:03 Hourdel               2025-01-13 00:00:00  
-## 3 2025-01-13 15:06:42 &lt;NA&gt;                  NA                   
-## 4 2025-01-13 15:13:54 &lt;NA&gt;                  NA                   
-## 5 2025-01-13 15:26:11 &lt;NA&gt;                  NA                   
-## 6 2025-01-13 15:34:16 Pointe                2025-01-13 00:00:00  
-## # ℹ 13 more variables: `Heure de l&#39;entretien` &lt;dttm&gt;,
-## #   `Caractéristique de la personne interviewée` &lt;chr&gt;,
-## #   `Age approximatif` &lt;chr&gt;,
-## #   `Lieu de résidence de la personne interviewée` &lt;chr&gt;,
-## #   `Activité de loisir de la personne interrogée :` &lt;chr&gt;,
-## #   `Activité professionnelle de la personne interrogée :` &lt;chr&gt;,
-## #   `Q1 : Connaissez-vous le nom des espèces de phoques qui sont présentes dans la baie de Somme ? (Si oui préciser les espèces, Si ne sait pas, donner les deux noms des espèces (phoque gris et phoque veau-marin))` &lt;chr&gt;, …</code></pre>
-</div>
-<div id="diagnostic" class="section level2">
-<h2>Diagnostic</h2>
-<div class="incremental">
-<ul class="incremental">
-<li>On va regarder déja la structure des données et le taux de
-complétude des données</li>
-<li>On va ensuite regarder comment standardiser les noms de variables,
-les réponses aux questions (souvent imparfaites), assigner le bon format
-etc.</li>
-</ul>
-</div>
-</div>
-<div id="exploration-des-variables" class="section level2">
-<h2>Exploration des variables</h2>
-<pre><code>##  POSIXct[1:218], format: &quot;2025-01-13 14:38:18&quot; &quot;2025-01-13 14:48:03&quot; &quot;2025-01-13 15:06:42&quot; ...</code></pre>
-<pre><code>##  chr [1:218] &quot;Employé&quot; &quot;Employé&quot; &quot;Retraite&quot; &quot;Retraité&quot; &quot;Retraite&quot; ...</code></pre>
-<pre><code>##  chr [1:218] &quot;Il faut laisser la nature évoluer librement, La surfréquentation peut générer des dérangements pour la nature&quot; ...</code></pre>
-<pre><code>##  [1] &quot;Horodateur&quot;                                                                                                                                                                                                      
-##  [2] &quot;Lieu de l&#39;entretien&quot;                                                                                                                                                                                             
-##  [3] &quot;Jour de l&#39;entretien&quot;                                                                                                                                                                                             
-##  [4] &quot;Heure de l&#39;entretien&quot;                                                                                                                                                                                            
-##  [5] &quot;Caractéristique de la personne interviewée&quot;                                                                                                                                                                      
-##  [6] &quot;Age approximatif&quot;                                                                                                                                                                                                
-##  [7] &quot;Lieu de résidence de la personne interviewée&quot;                                                                                                                                                                    
-##  [8] &quot;Activité de loisir de la personne interrogée :&quot;                                                                                                                                                                  
-##  [9] &quot;Activité professionnelle de la personne interrogée :&quot;                                                                                                                                                            
-## [10] &quot;Q1 : Connaissez-vous le nom des espèces de phoques qui sont présentes dans la baie de Somme ? (Si oui préciser les espèces, Si ne sait pas, donner les deux noms des espèces (phoque gris et phoque veau-marin))&quot;
-## [11] &quot;Q2 : Savez-vous combien il y a de phoque gris et de phoque veau-marin dans la baie de Somme ?&quot;                                                                                                                   
-## [12] &quot;Q3 : Avez-vous déjà vu des phoques dans la baie&quot;                                                                                                                                                                 
-## [13] &quot;Q4 : Est-ce qu’ils vous dérangent dans vos activités de loisir ou professionnelle ? Pourquoi ?&quot;                                                                                                                  
-## [14] &quot;Q5 : A quoi assimilez vous le phoque (2 choix max) ?&quot;                                                                                                                                                            
-## [15] &quot;Q6 :  Pouvez-vous me dire si vous êtes d’accord avec les affirmations suivantes (cocher lorsque accord) ?&quot;                                                                                                       
-## [16] &quot;Avez-vous des suggestions concernant cette question des phoques dans la Baie de Somme ?&quot;</code></pre>
-<hr />
-<ul>
-<li>On a plusieurs informations sur les formats :
-<ul>
-<li><code>POSIT</code>: données temporelles formatées en date</li>
-<li><code>chr</code> : données “character” i.e. données textuelles, sans
-notion d’ordre etc</li>
-</ul></li>
-<li>Pour certaines variables on va vouloir passer de données textuelles
-à des données catégorielles, c’est à dire des données textuelles avec
-différents niveaux</li>
-<li>Pour certaines questions à choix multiple, les réponses sont collées
-entre elles :
-<ul>
-<li>Il va falloir réfléchir à comment les extraire</li>
-<li>Et à comment les exploiter</li>
-</ul></li>
-<li>Les noms de colonnes ne sont pas pratiques à utiliser : on va les
-renommer</li>
-</ul>
-<pre class="r"><code>colnames(data_) = c(&quot;date&quot;, &quot;lieu&quot;, &quot;jour&quot;, &quot;heure&quot;, &quot;genre&quot;,
-                    &quot;classe_age&quot;, &quot;residence&quot;, &quot;loisir&quot;, &quot;profession&quot;, 
-                    &quot;q1_nom_phoques&quot;, &quot;q2_pop_phoques&quot;, &quot;q3_vue_phoques&quot;, 
-                    &quot;q4_dérangement&quot;, &quot;q5_classe_phoque&quot;, &quot;q6_avis&quot;, &quot;q7_divers&quot;)</code></pre>
-</div>
-<div id="lieux" class="section level2">
-<h2>Lieux</h2>
-<pre class="r"><code>unique(data_$residence)</code></pre>
-<pre><code>##  [1] &quot;Hauts de Seine(92)&quot;                   
-##  [2] &quot;Abbeville&quot;                            
-##  [3] NA                                     
-##  [4] &quot;Nancy&quot;                                
-##  [5] &quot;Beauvais&quot;                             
-##  [6] &quot;Essonne&quot;                              
-##  [7] &quot;Drancourt&quot;                            
-##  [8] &quot;Pas d&#39;ici&quot;                            
-##  [9] &quot;Crotoy&quot;                               
-## [10] &quot;Saint Valery sur Somme&quot;               
-## [11] &quot;Dunkersue&quot;                            
-## [12] &quot;Franciere (somme)&quot;                    
-## [13] &quot;Saint Valery&quot;                         
-## [14] &quot;Vers saint valery&quot;                    
-## [15] &quot;Le crotoy&quot;                            
-## [16] &quot;Saint-Valerie-sur-somme&quot;              
-## [17] &quot;Saigneville&quot;                          
-## [18] &quot;Arrest&quot;                               
-## [19] &quot;Quesnoy le montant&quot;                   
-## [20] &quot;Le Treport&quot;                           
-## [21] &quot;Treport&quot;                              
-## [22] &quot;Treport depuis 2 ans&quot;                 
-## [23] &quot;Le treport&quot;                           
-## [24] &quot;Abeville&quot;                             
-## [25] &quot;Feuquieres - en - vimeu&quot;              
-## [26] &quot;Feuquieres en vimeu&quot;                  
-## [27] &quot;Belgique&quot;                             
-## [28] &quot;Amiens&quot;                               
-## [29] &quot;Le Crotoy&quot;                            
-## [30] &quot;Cayeux&quot;                               
-## [31] &quot;Cayeux-sur-mer&quot;                       
-## [32] &quot;Saint-Riquier&quot;                        
-## [33] &quot;Saint-riquier&quot;                        
-## [34] &quot;Eu&quot;                                   
-## [35] &quot;Pau&quot;                                  
-## [36] &quot;Miramont-sensacq&quot;                     
-## [37] &quot;Saint-Valery-sur-Somme&quot;               
-## [38] &quot;Criel-sur-mer&quot;                        
-## [39] &quot;Boulogne-sur-mer&quot;                     
-## [40] &quot;Outreau&quot;                              
-## [41] &quot;Dieppe&quot;                               
-## [42] &quot;Saint valery sur somme&quot;               
-## [43] &quot;Arras&quot;                                
-## [44] &quot;Île de France&quot;                        
-## [45] &quot;Lancher&quot;                              
-## [46] &quot;Hourdel&quot;                              
-## [47] &quot;Cayeux sur mer&quot;                       
-## [48] &quot;Arlay a 5km du crotoy&quot;                
-## [49] &quot;Saint Valéry&quot;                         
-## [50] &quot;Noyelles sur mer&quot;                     
-## [51] &quot;Lanchere&quot;                             
-## [52] &quot;Aisne&quot;                                
-## [53] &quot;Pende&quot;                                
-## [54] &quot;Noyelle sur mer&quot;                      
-## [55] &quot;Quesnois&quot;                             
-## [56] &quot;Pendé&quot;                                
-## [57] &quot;Boismont&quot;                             
-## [58] &quot;Saint Raphaël&quot;                        
-## [59] &quot;St VALERY&quot;                            
-## [60] &quot;Routhiauville&quot;                        
-## [61] &quot;Abbevilel&quot;                            
-## [62] &quot;La Molière&quot;                           
-## [63] &quot;Lille&quot;                                
-## [64] &quot;Saimt valery&quot;                         
-## [65] &quot;Mons-Boubert&quot;                         
-## [66] &quot;Lancheres&quot;                            
-## [67] &quot;Fressennville&quot;                        
-## [68] &quot;St Valery&quot;                            
-## [69] &quot;Braine-l’Alleup&quot;                      
-## [70] &quot;VILLERS COTTERETS (02600)&quot;            
-## [71] &quot;Abbville&quot;                             
-## [72] &quot;Quend&quot;                                
-## [73] &quot;Amiens / Berck&quot;                       
-## [74] &quot;Berck&quot;                                
-## [75] &quot;Grofflier&quot;                            
-## [76] &quot;Conchil-le-temple&quot;                    
-## [77] &quot;Bouches du rhone&quot;                     
-## [78] &quot;Fort Mahon&quot;                           
-## [79] &quot;Fauquembergues (résidence secondaire)&quot;
-## [80] &quot;Merlimont&quot;                            
-## [81] &quot;ARRAS&quot;                                
-## [82] &quot;Saint Étienne au- Mont&quot;               
-## [83] &quot;Berck-sur-mer&quot;                        
-## [84] &quot;Roye&quot;                                 
-## [85] &quot;Maubeuge&quot;                             
-## [86] &quot;Rang du fliers&quot;                       
-## [87] &quot;Stella&quot;                               
-## [88] &quot;Estreboeuf&quot;                           
-## [89] &quot;Friville&quot;</code></pre>
-<pre class="r"><code>unique(data_$lieu)</code></pre>
-<pre><code>##  [1] &quot;Hourdel&quot;                NA                       &quot;Pointe&quot;                
-##  [4] &quot;Saint Valéry sur Somme&quot; &quot;Le Crotoy&quot;              &quot;Amiens&quot;                
-##  [7] &quot;Le Tréport&quot;             &quot;Trépot&quot;                 &quot;Le Treport&quot;            
-## [10] &quot;Tréport&quot;                &quot;Treport&quot;                &quot;Le treport&quot;            
-## [13] &quot;Le tréport&quot;             &quot;treport&quot;                &quot;Abbeville&quot;             
-## [16] &quot;Abeville&quot;               &quot;L&#39;Oise&quot;                 &quot;Cayeux-sur-mer&quot;        
-## [19] &quot;Cayeux&quot;                 &quot;POINTE DU HOURDEL&quot;      &quot;Berck&quot;                 
-## [22] &quot;Berck sur mer&quot;          &quot;Berck-sur-mer&quot;</code></pre>
-<hr />
-<ul>
-<li>Pas mal de choses qui se ressemblent mais ne sont pas pareilles :
-<code>Saint Valéry</code>, <code>St Valery</code>,
-<code>Saint Valery sur Somme</code> etc
-<ul>
-<li>On va essayer de se débarasser de la ponctuation et des lettres
-majuscules</li>
-<li>Corriger les fautes d’orthographe</li>
-<li>Se débarasser des imprécisions ou choses non nécessaires (depuis 2
-ans, (Somme)) etc</li>
-</ul></li>
-<li>Tout en conservant toutes les données : <span class="alert">on ne
-remplace jamais la donnée initiale!!</span></li>
-<li>On le fait à la main ici, mais des approches plus structurées
-existent:
-<ul>
-<li>Distance entre les groupes nominaux : combien faut il changer de
-caractères (<code>stringdist</code>)</li>
-<li>Matching avec des bases géographiques : on le fera plus tard pour
-les coordonnées géographiques</li>
-</ul></li>
-</ul>
-<pre class="r"><code>remplacement = function(x_){
-  x = str_to_lower(x_) # On met tout en minuscule
-  x = x %&gt;%
-    gsub(&quot;\\ble\\b&quot;, &quot;&quot;, .)%&gt;% # On enlève &quot;le&quot; à l&#39;aide d&#39;une expression régulière (regex)
-    gsub(&quot;é&quot;, &quot;e&quot;, .)          # On enlève également les accents aigus et graves
-  
-  # Après inspection, on fait ce qu&#39;on peut pour remplacer ensemble les zones géographiques
-  
-  if(x %in% c(&#39; treport&#39;, &#39;trepot&#39;, &#39;treport&#39;, &quot;treport depuis 2 ans&quot;)){
-    return(&#39;Le Tréport&#39;)
-  }else if(x %in% c(&#39;abbeville&#39;, &#39;abeville&#39;, &quot;abbevilel&quot;, &quot;abbville&quot;)){
-    return(&#39;Abbeville&#39;)
-  }else if(x %in% c(&#39; crotoy&#39;, &#39;le crotoy&#39;, &#39;crotoy&#39;)){
-    return(&#39;Le Crotoy&#39;)
-  }else if(x %in% c(&quot;berck-sur-mer&quot;, &quot;berck sur mer&quot;, &quot;berck&quot;)){
-    return(&#39;Berck-sur-mer&#39;)
-  }else if(x %in% c(&#39;cayeux-sur-mer&#39;, &#39;cayeux&#39;, &quot;cayeux sur mer&quot;)){
-    return(&#39;Cayeux-sur-mer&#39;)
-  # Q1 : A COMPLETER POUR SAINT VALERY JUSQU&#39;A CE QU&#39;UNE SEULE ENTREE FONCTIONNE
-  
-  
-  }else if(x %in% c(&#39;hourdel&#39;, &#39;pointe&#39;, &#39;pointe du hourdel&#39;)){
-    return(&quot;Pointe du Hourdel&quot;)
-  }else if(x %in% c(&quot;feuquieres en vimeu&quot;,  &quot;feuquieres - en - vimeu&quot; )){
-    return(&#39;Feuquières-en-Vimeu&#39;)
-  }else if(x %in% c(&#39;noyelles sur mer&#39;, &#39;noyelle sur mer&#39;)){
-    return(&#39;Noyelles-sur-mer&#39;)
-  }else if(x %in% c(&quot;amiens&quot;,  &quot;amiens / berck&quot;  )){
-    return(&quot;Amiens&quot;)
-  }else if(x %in% c(&#39;lancheres&#39;, &#39;lanchere&#39;, &#39;lancher&#39;, &quot;lanchéres&quot;)){
-    return(&#39;Lanchéres&#39;)
-  }else if(x %in% c(&#39;arlay a 5km du crotoy&#39;)){
-    return(&#39;Arlay&#39;)
-  }else if(x %in% c(&quot;fauquembergues (résidence secondaire)&quot;)){
-    return(&#39;Fauquembergues&#39;)
-  }else if(x %in% c(&quot;villers cotterets(02600)&quot; )){
-    return(&#39;Villers Cotterets&#39;)
-  }else if( x %in% c(&quot;franciere (somme)&quot;  )){
-    return(&#39;Francières&#39;)
-  }else if( x %in% c(&quot;hauts de seine(92)&quot;)){
-    return(&#39;Hauts de Seine&#39;)
-  }else if( x %in% c(&quot;Saint-Riquier&quot;, &quot;Saint-riquier&quot;, &quot;saint-riquier&quot;)){
-    return(&#39;Saint-Riquier&#39;)
-  }else if( x %in% c(&quot;pendé&quot;, &quot;pende&quot;)){
-    return(&#39;Pendé&#39;)
-  }else if( x %in% c(&quot;arras&quot;)){
-    return(&#39;Arras&#39;)
-  }else if( x %in% c(&quot;dunkersue&quot;)){
-    return(&#39;Dunkerque&#39;)
-  }else{
-    return(x_)
-  }
-}</code></pre>
-<pre class="r"><code>data_ = data_ %&gt;%
-  mutate(lieu_clean = sapply(lieu, remplacement)) # On applique la fonction remplacement à chaque lieu
-                                                  # et sapply renvoie un vecteur qui est assigné à 
-                                                  # une nouvelle variable
-unique(data_$lieu_clean)</code></pre>
-<pre><code>##  [1] &quot;Pointe du Hourdel&quot;      NA                       &quot;Saint Valéry sur Somme&quot;
-##  [4] &quot;Le Crotoy&quot;              &quot;Amiens&quot;                 &quot;Le Tréport&quot;            
-##  [7] &quot;Abbeville&quot;              &quot;L&#39;Oise&quot;                 &quot;Cayeux-sur-mer&quot;        
-## [10] &quot;Berck-sur-mer&quot;</code></pre>
-<p>Enfin, on enregistre la nouvelle data</p>
-</div>
-<div id="variable-catégorielle-ordonnée-lâge" class="section level2">
-<h2>Variable catégorielle ordonnée : l’âge</h2>
-<p>On a classé la population par groupes d’âge. L’usage de variables
-<code>factor</code> permet d’avoir des variables catégorielles
-ordonnées, que l’on peut représenter sur un axe ordonné en précisant les
-niveaux (<code>levels</code>)</p>
-<pre class="r"><code># Q3 : transformez l&#39;age en variable catégorielle ordonnée
-# Utilisez ?levels si besoin$</code></pre>
-<pre><code>## Warning in grid.Call(C_stringMetric, as.graphicsAnnot(x$label)): famille de
-## police introuvable dans la base de données des polices Windows</code></pre>
-<pre><code>## Warning in grid.Call.graphics(C_text, as.graphicsAnnot(x$label), x$x, x$y, :
-## famille de police introuvable dans la base de données des polices Windows</code></pre>
-<p><img role="img" src="data:image/png;base64,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8+W3+x8/ufxTtt8Yv+C23rnyr3r+Vnb9c49HNLfzArefaXr+nY52eNeM699+pG/VXTPaEb5Rn0xAn17+BQPP3yZv+q8GPHvn4eavatn+RuDaB6A3/0WBGl8yN2vzt8587bsXLz07/+9hvPT1o53be4EXn097vvRYh3fNuP7tR/pW3TWjHd8b9ckENCJitAQ0IuJACWhExIES0IiIAyWgEREHSkAjIg6UgEZEHCgBjYg4UAIaEXGgBDQi4kAJaETEgRLQiIgDJaAREQdKQAPw6R+/eHZ29rkv/On2xZ88OPsd42v76OyFP2yffvvsl368feXfPjv7deOriwVJQGO4T39wtvOFTdPGBvS9s3/0bevri+VIQGO08/cAv/An6//zV98520ZtaEB/8uCFP/zo7Bf+zPgKYzES0Bjt7fOebf3o7OzzbWxAN//7/N3RiLtIQGOwj84mtdzGdERA16/q88bXEcuUgMZY63f+JiH7yYPP/cHzgP7D5nNLL+w+t/RXXzn/TNNXf3zTS9sXf+UP2o3/cPe6/viXz85+8U+3AX1v+5mjvdex+S6/8qfnv6+/4aeN+GwJaIx103ubF9/20YPd55Y23+O9ixe2H668+lLbfR5q+zvxvX944ee/uf3WVzcB/eim13H+8dhz//QioFd/2ogZCWiM9dHzj4Be2gb0579x9kvr9ws//dGDTQjX3/hr64z95YPdh0knL50X8x//uH36/974D3fePnvhtzff+vxV7r2O8+/yz37cfrT7Lld/2og5CWiM9d4NnwDfBvTyn7x38Vvu3XuX59989aX1D/jtzXf96IbvurP7YOv6O18GdO917N4dvvguez9txJwENMZ674bfHu/9tn5XxWkN91/a/SSbTw3dFOXzf3Txnd6+IYdXy3vxXfZ+2og5CWiMNRPQT//qP/zW2cXHLM8+99W/2X2XKy99+u3LP0q0+emuftfn3+nzux97NaCXr2Pvu+z/tBFzEtAYS/8WvrW//MrF53A2wXt78/82X3K/99LPf+PsufOf7up33Vp/p4scXgno9HU8/y6bz8Jf+2kjZiSgMZb+JNJFBn/1D3508V1+9Mvb0m0/Ljl56Xrprn7Xjb06XrjyOhLQuKMENMZaV2r68c63z794c/dJpO2f8Jw09tP/5yuXX3E0eel5+J67+l2bCOjV13E9oPlLRuJWEtAY7MrnZ9bN+vzFe6DPPyD53pV3Un/0YPrxyM1LV78YX3zXmz4Guvc6rn8MNJ86iltJQGOwK3+U873NC5uAXr7/t+7YlZqdf9T06kvrCE9/h733D5//3Nc+C7/3OvY/Uf92fuMet5OAxmjiLxO5zOBHZ1e/jGlTuasv/WT3le7bH3T1H+6sv9OvX/zvtfdAL17H9a8D/fzV7xfxmRLQGO38T1hu/zq7r5yd/eJ5+bYde3v7x4B+cPGhzPV7i7/4J9u/PPTaS+ff9/xPs//Vb27Ct/cPd7Y/4ZU/ibT3Ovb/sNLVnzZiTgIaw336ncvPdU//QuXdJ8F/8f/Yvut4+cfWf61de+ny72R+4Xeu/8PL17P9g+4vvHrlj3JeeR1732Xvp42YkYAG4Ke/f/5lR/v/SY9Pf/Bg81cq7X4D/dPvPJh8defVl7Zfz/m5X/ubG//hzo8mfxvT1v7ruPjbmC7/huWrP23EZ0tAY8EuP2aav6I+DpKAxoLtvmAqnzSKwySgsWA/ebD+Hf75BwDySaM4SAIaS7b7m5infwY0olsCGou2+ezT5WezIm4nAY2IOFACGhFxoAQ0IuJACWhExIES0IiIAyWgEREHSkAjIg6UgEZEHCgBjYg4UAIaEXGgBDQi4kAJaETEgRLQiIgDJaAREQf6n895s3ZhGc3jAAAAAElFTkSuQmCC" width="672" /></p>
-<p>:::</p>
-</div>
-<div id="variables-continues-tronquées-population-des-phoques" class="section level2">
-<h2>Variables continues tronquées : population des phoques</h2>
-<ul>
-<li>Variable <em>continue</em> : on va surement devoir
-<em>discretiser</em></li>
-<li>Qui est limitée à 0</li>
-<li>Avec beaucoup de non réponse</li>
-</ul>
-<p>Challenges techniques :</p>
-<ul>
-<li>Transformer la variable <code>chr</code> en variable
-<code>int</code></li>
-<li>On va utiliser la population totale</li>
-</ul>
-<pre class="r"><code>remplacement_1 = function(x_){
-  x = str_to_lower(x_)
-  return(grepl(&quot;non&quot;, x))
-}
-
-
-remplacement = function(x_, option = &quot;max&quot;){
-  # Approche par regex : 
-  potential_number = x_ %&gt;%
-    gsub(&quot; &quot;, &quot;&quot;, .)%&gt;%
-    str_extract_all(.,&quot;\\d+\\.?\\d*&quot;)%&gt;%
-    unlist()%&gt;%
-    as.numeric()
-  # On repère les chiffres : 
-  # \\d+ repère un chiffre ou plusieurs
-  # \\.? repère un point décimal
-  # \\d* prent les 0
-  
-  # Ensuite on vérifie s&#39;il y a des &quot;-&quot; ou des &quot;/&quot;
-  
-  tiret_barre = grepl(&quot;[-/]&quot;, x_)
-
-  # Message d&#39;erreur si l&#39;option n&#39;est pas bien spécifiée  
-  if(!(str_to_lower(option) %in% c(&quot;min&quot;, &quot;max&quot;))){
-    stop(&quot;Error : option is ill picked&quot;)
-  }
-  
-    # Enfin, on prend les &quot;beaucoup&quot; en compte : 
-
-  if(x_ %in% c(startsWith(str_to_lower(x_), &quot;beauco&quot;), 
-              &#39;Bcp&#39;, &#39;Non beaucoup&#39;, &#39;Pas du tout (beaucoup)&#39;)){
-    return(&quot;Beaucoup&quot;)
-  }else if(is_empty(potential_number)){
-    if(startsWith(str_to_lower(x_), &#39;oui&#39;)){
-      return(&#39;Oui&#39;)
-    }else if(grepl(&quot;centai&quot;, str_to_lower(x_))){
-      return(&#39;Centaines&#39;)
-    }else if(grepl(&#39;milli&#39;, str_to_lower(x_))){
-      return(&#39;Milliers&#39;)
-    }else if(grepl(&#39;un&#39;, str_to_lower(x_))){
-      return(&#39;Quelques uns&#39;)
-    }else{
-      return(&#39;Non&#39;)
-    }
-  }else{
-    if(tiret_barre){
-      if(length(potential_number)&gt;1){
-        if(option==&#39;min&#39;){
-          return(min(potential_number))
-        }else if(option==&quot;max&quot;){
-          return(max(potential_number))
-        }
-      }else{
-        return(as.numeric(potential_number))
-      }
-    }else{
-      return(sum(as.numeric(potential_number)))
-    }
-  }
-}
-
-
-#for(i in 1:nrow(data_)){
-# print(paste(data_[i, &#39;q2_pop_phoques&#39;],
-#       remplacement(data_[i,&#39;q2_pop_phoques&#39;], option = &quot;max&quot;)))
-#}
-
-data_ = data_ %&gt;%
-  mutate(pop_clean_yes_no = sapply(q2_pop_phoques, remplacement_1),
-         pop_clean_max = sapply(q2_pop_phoques, remplacement))</code></pre>
-</div>
-<div id="variables-catégorielles-ordinales-professions" class="section level2">
-<h2>Variables catégorielles ordinales : professions</h2>
-<pre class="r"><code>t(table(data_$profession))# Pour voir les fréquences</code></pre>
-<pre><code>##       
-##        Agence immobilier Agent public Agriculteur (à préciser) Aide à domicile
-##   [1,]                 1           20                        3               1
-##       
-##        Aide soignante Archéologue Assistante à domicile Cadre Cadre supérieur
-##   [1,]              1           1                     1     1               3
-##       
-##        Chômage Collégien Commerçant (préciser) Cuisine
-##   [1,]       1         1                    13       1
-##       
-##        Dessinateur en bureau d&#39;étude Élève Élèves Employé Employee medical
-##   [1,]                             1     1      2      26                1
-##       
-##        Enseignante Entrepreneur indépendant Entreprise/tourisme (à préciser)
-##   [1,]           1                        1                                1
-##       
-##        Etudiant Étudiant Étudiant college Etudiante Étudiante Étudiantes
-##   [1,]        1        5                1         2         2          1
-##       
-##        Famille d&#39;accueil Femme au foyer Foyer d’enfants Gérant de restaurant
-##   [1,]                 1              1               1                    1
-##       
-##        Infirmiere Infirmière
-##   [1,]          1          1
-##       
-##        Intermittente du spectacle + boutique d&#39;ésortérisme Mairie
-##   [1,]                                                   1      1
-##       
-##        Maîtresse d&#39;école Mécanicien Medical Non Ouvrier Ouvrier agricole
-##   [1,]                 1          1       1   1       6                1
-##       
-##        Pas demandé Pêcheur (préciser) Photographe Prof Professeur
-##   [1,]           1                  2           1    4          1
-##       
-##        Réceptionniste en hôtellerie Recruteur de donateurs pour association
-##   [1,]                            1                                       1
-##       
-##        Restauration/hôtellerie Retraite Retraité Retraité militaire
-##   [1,]                      12       37       32                  1
-##       
-##        Retraité pêcheurs Retraité/ avant aide soignante Retraitée Retraites
-##   [1,]                 1                              1         1         1
-##       
-##        Rien Sans Sans emploi Tabac Traducteur
-##   [1,]    1    1           1     1          1
-##       
-##        Travail avec des enfants handicapés Usine
-##   [1,]                                   1     2</code></pre>
-<div class="fragment">
-<p>On a encore des problèmes d’encodage : je vous laisse y penser</p>
-</div>
-<div class="incremental">
-<ul class="incremental">
-<li>Trouvez les dénominations en CSP les plus pertinentes</li>
-<li>Regroupez les personnes dans la bonne CSP en :
-<ul class="incremental">
-<li>Modifiant la fonction <code>remplacement()</code></li>
-<li>Et en attribuant les CSP à une nouvelle variable</li>
-</ul></li>
-</ul>
-</div>
-<hr />
-<p>On peut utiliser deux variables :</p>
-<ul>
-<li>Une variable de “haut” niveau de classification</li>
-<li>Une de “bas” niveau : plus de détails</li>
-</ul>
-<div class="fragment">
-<p>On peut utiliser un prétraitement des données et la fonction
-<code>startsWith(x, prefix)</code> pour rassembler tout ce qui
-commencerait par la même racine</p>
-</div>
-<hr />
-<pre class="r"><code>csp_questionnaire = c(&quot;Entreprise/tourisme&quot;, &quot;Restauration/hôtellerie&quot; , &quot;Agriculteur (à préciser)&quot;, &quot;Pêcheur (préciser)&quot;,&quot;Commerçant (préciser)&quot;, &quot;Agent public&quot;,
-                      &quot;Cadre supérieur&quot;, &quot;Employé&quot;, &quot;Ouvrier&quot;)
-
-
-remplacement_questionnaire = function(x_){
-  x = x_%&gt;%
-    str_to_lower()%&gt;%
-    gsub(&quot;é&quot;, &quot;e&quot;, .)%&gt;%
-    gsub(&quot;è&quot;, &quot;e&quot;, .)   
-  
-  if(x %in% c(&#39;agriculteur (à preciser)&#39;)){
-    return(&quot;Agriculteur exploitant&quot;)
-  }else if(startsWith(x, &quot;employ&quot;) | x %in% c(&#39;aide à domicile&#39;, 
-                                              &#39;aide soignante&#39;, &#39;assistante à domicile&#39;, 
-                                              &quot;famille d&#39;accueil&quot;, &quot;tabac&quot;, &quot;medical&quot;,
-                                              &quot;recruteur de donateurs pour association&quot;)){
-    return(&quot;Employé.e&quot;)
-    
-    # Q5 : utilisez startsWith pour trouver les étudiants, collegiens etc
-  }else if( x %in% c(&#39;sans&#39;, &#39;rien&#39;, 
-                                                                                                   &#39;sans emploi&#39;, &#39;chômeur&#39;,
-                                                                                                   &#39;chômage&#39;, &#39;non&#39;, &quot;femme au foyer&quot;)){
-    return(&#39;Sans activité professionelle (hors retraite)&#39;)
-  }else if(startsWith(x, &#39;retrait&#39;)){
-    return(&#39;Retraité.e&#39;) 
-  }else if(startsWith(x, &#39;ouvrier&#39;) | x %in% c(&#39;mecanicien&#39;, &#39;usine&#39;)){
-    return(&quot;Ouvrier&quot;)
-  }else if(startsWith(x, &#39;foyer&#39;) | x %in% c(&quot;infirmiere&quot;, &quot;maîtresse d&#39;ecole&quot;, &#39;enseignante&#39;, &#39;professeur&#39;, &#39;prof&#39;, &quot;foyer d&#39;enfants&quot;, &quot;travail avec des enfants handicapes&quot;)){
-    return(&#39;Professions intermédiaires&#39;)
-  }else if(startsWith(x, &#39;cadr&#39;) | startsWith(x, &#39;intermittente&#39;) | x %in% c(&#39;traducteur&#39;, &quot;archeologue&quot;, &quot;dessinateur en bureau d&#39;etude&quot;, &#39;photographe&#39;, &quot;agence immobilier&quot;) ){
-    return(&quot;Cadres et professions intellectuelles supérieures&quot;)
-  # Catégories du questionnaire
-  }else if(x %in% c(&#39;gerant de restaurant&#39;, &#39;receptionniste en hôtellerie&#39;, &#39;restauration/hôtellerie&#39;, &quot;cuisine&quot;)){
-    return(&quot;Restauration/hôtellerie&quot;)
-  }else if(startsWith(x, &quot;entrepr&quot;) | startsWith(x, &quot;commerçant&quot;)){
-    return(&quot;Artisans, commerçants, chefs d&#39;entreprise&quot;)
-  }else if(x %in% c(&#39;agent public&#39;, &#39;mairie&#39;)){
-    return(&#39;Agent public&#39;)
-  }else{
-    return(x_)
-  }
-    
-}</code></pre>
-</div>
-<div id="variables-catégorielles-non-ordonnées-nominales-nom-des-phoques" class="section level2">
-<h2>Variables catégorielles non ordonnées (nominales) : nom des
-phoques</h2>
-<p>Ici, on va adopter la même approche par fonction de
-<code>remplacement()</code></p>
-<pre class="r"><code>table(data_$q1_nom_phoques)</code></pre>
-<pre><code>## 
-##                                 Gris                   Gris et veau marin 
-##                                    1                                    1 
-##                 Gris et veaux marins                             Les deux 
-##                                    1                                    1 
-##                                  Nln                                   Nn 
-##                                    1                                    2 
-##                                  Nob                                  non 
-##                                    1                                    1 
-##                                  Non                                  Oui 
-##                                  136                                   47 
-##        Oui (manque les phoques gris)                         Oui les deux 
-##                                    1                                    2 
-##                      Oui phoque gris OUI phoque gris et phoque veau-marin 
-##                                    1                                    1 
-##                    Oui plus ou moins                       Oui veau-marin 
-##                                    1                                    1 
-##                          Pas de tout                          Phoque gris 
-##                                    1                                    1 
-##                 Phoque gris et blanc                Phoque veau-marin oui 
-##                                    1                                    1 
-##                         Phoques gris                             Touriste 
-##                                    1                                    1 
-##                             Vaumarin                           Veau-marin 
-##                                    1                                    2 
-##          Veau-marin et phoque commun                           Veau marin 
-##                                    1                                    5 
-##             Veau marin , phoque gris                 Veau marin et phoque 
-##                                    1                                    1 
-##         Veaux-marins et phoques gris 
-##                                    1</code></pre>
-<p>On va prendre comme réponses possible : <code>oui</code>,
-<code>non</code>, <code>Partiel: veau marin</code> et
-<code>Partiel: phoque gris</code></p>
-<p><strong>Question 6 : faites une fonction de <code>remplacement</code>
-en utilisant ce qu’on a vu</strong></p>
-</div>
-<div id="variables-catégorielles-nominales-multiples-avis-sur-les-phoques" class="section level2">
-<h2>Variables catégorielles nominales multiples: avis sur les
-phoques</h2>
-<p>La différence ici, c’est que plusieurs choix sont possibles</p>
-<pre class="r"><code># Trouver toutes les phrases possibles
-
-phrases_ = c() # Initier un stock de phrases vide
-
-for(row_ in 1:nrow(data_)){ # Pour chaque individu
-  candidate_ =  unlist(# On enlève la structure de liste 
-    strsplit(as.character(data_[row_, &quot;q6_avis&quot;]), # qui résulte de la séparation de chaque réponse
-             &quot;, &quot;) # autour de la virgule
-    ) 
-  for(element_ in candidate_){ # On regarde pour chaque phrase cnadidate
-    if(!(element_ %in% phrases_)){ # Si elle a déja été dite
-      phrases_ = c(phrases_, element_) # Sinon, on l&#39;ajoute
-    }
-  }
-}
-# Imprimer les 15 premières phrases
-phrases_[1:15]</code></pre>
-<pre><code>##  [1] &quot;Il faut laisser la nature évoluer librement&quot;                                 
-##  [2] &quot;La surfréquentation peut générer des dérangements pour la nature&quot;            
-##  [3] &quot;Les conflits entre les humains et les phoques augmentent&quot;                    
-##  [4] &quot;Les phoques font partie du patrimoine du territoire&quot;                         
-##  [5] &quot;Il y a trop de phoques veau-marin&quot;                                           
-##  [6] &quot;Il y a trop de phoques gris&quot;                                                 
-##  [7] &quot;Il ne faut pas que le nombre de phoque augmente plus&quot;                        
-##  [8] &quot;Les phoques mangent trop de poissons&quot;                                        
-##  [9] &quot;Les phoques représentent une opportunité économique pour le territoire&quot;      
-## [10] &quot;Les phoques représentent une menace économique pour le territoire&quot;           
-## [11] &quot;Il faudrait un groupe de travail local sur les interactions avec les phoques&quot;
-## [12] &quot;Il faudrait plus de panneaux d’informations sur les phoques&quot;                 
-## [13] &quot;Il faudrait des barrières pour empêcher de déranger les phoques&quot;             
-## [14] &quot;Il faudrait un centre d’information sur les phoques&quot;                         
-## [15] &quot;Visites guide nature m&quot;</code></pre>
-<p>On a des problèmes de remplissage du questionnaire! Donc, on va
-récupérer les choix du questionnaire</p>
-<ul>
-<li>Ensuite, on fait ce qu’on appelle du one hot encoding , c’est à dire
-que l’on:
-<ul>
-<li>Transforme chaque affirmation en une variable</li>
-<li>Qui prend la valeur 0 si absente, 1 si présente</li>
-<li>Permet de numériser les variables <em>catégorielles</em> sans
-imposer d’ordre</li>
-</ul></li>
-</ul>
-<p>:::</p>
-<div class="fragment">
-<pre class="r"><code>data_ = data_ %&gt;%
-  mutate(ID = seq(1:nrow(data_))) # On donne un identifiant à chaque individu statistique
-
-# On crée une table d&#39;occurence vide
-table_occurrences &lt;- matrix(0,
-                            nrow = nrow(data_), 
-                            ncol = length(phrases_possibles),
-                            dimnames = list(seq(1:nrow(data_)),
-                                             phrases_possibles)) # Nomme les dimensions
-
-# Remplir le tableau avec les occurrences
-for (i in 1:nrow(data_)) {
-  phrases_ = unlist(                            # On enlève la structure de liste 
-    strsplit(as.character(data_[i, &quot;q6_avis&quot;]), # qui résulte de la séparation de chaque réponse
-             &quot;, &quot;)                              # autour de la virgule
-    ) 
-  for (phrase in phrases_) {                    # Pour chaque phrase exprimée, 
-    if (phrase %in% phrases_possibles) {        # si elle est dite, 
-      table_occurrences[i, phrase] &lt;- table_occurrences[i, phrase] + 1 # on encode
-    }
-  }
-}</code></pre>
-</div>
-</div>
-<div id="variables-catégorielles-nominales-multiples-questions-sur-les-phoques" class="section level2">
-<h2>Variables catégorielles nominales multiples : questions sur les
-phoques</h2>
-<p>On fait la même chose pour la question sur les phoques</p>
-<pre class="r"><code>phrases_ = c() # Initier un stock de phrases vide
-
-for(row_ in 1:nrow(data_)){ # Pour chaque individu
-  candidate_ =  unlist(# On enlève la structure de liste 
-    strsplit(as.character(data_[row_, &quot;q5_classe_phoque&quot;]), # qui résulte de la séparation de chaque réponse
-             &quot;, &quot;) # autour de la virgule
-    ) 
-  for(element_ in candidate_){ # On regarde pour chaque phrase cnadidate
-    if(!(element_ %in% phrases_)){ # Si elle a déja été dite
-      phrases_ = c(phrases_, element_) # Sinon, on l&#39;ajoute
-    }
-  }
-}
-
-phrases_possibles = c(&quot;Un animal sympathique et paisible&quot;, &quot;Une espèce invasive et nuisible&quot;,
-                      &quot;Un concurrent pour les activités humaines&quot;, &quot;Une espèce menacée&quot;,
-                      &quot;Un prédateur supérieur&quot;
-                      )
-
-data_ = data_ %&gt;%
-  mutate(identifier = seq(1:nrow(data_))) # On donne un identifiant à chaque individu statistique
-
-
-# On crée une table d&#39;occurence vide
-table_occurrences &lt;- matrix(0,
-                            nrow = nrow(data_), 
-                            ncol = length(phrases_possibles),
-                             dimnames = list(seq(1:nrow(data_)),
-                                             phrases_possibles)) # Pour stocker un identifiant
-
-# Remplir le tableau avec les occurrences
-for (i in 1:nrow(data_)) {
-  phrases_ = unlist(# On enlève la structure de liste 
-    strsplit(as.character(data_[i, &quot;q5_classe_phoque&quot;]), # qui résulte de la séparation de chaque réponse
-             &quot;, &quot;) # autour de la virgule
-    ) 
-  for (phrase in phrases_) {
-    if (phrase %in% phrases_possibles) { # si elle est dite, 
-      table_occurrences[i, phrase] &lt;- table_occurrences[i, phrase] + 1
-    }
-  }
-}</code></pre>
-</div>
-<div id="variables-catégorielles-nominales-multiples-loisirs" class="section level2">
-<h2>Variables catégorielles nominales multiples : loisirs</h2>
-<div class="incremental">
-<ul class="incremental">
-<li>Il y a beaucoup trop de réponses uniques (64)</li>
-<li>Il faut revenir aux résultats du questionnaire, et traiter notamment
-les réponses collées (variables catégorielles multiples)</li>
-<li>On refait du one hot encoding</li>
-</ul>
-</div>
-<div class="fragment">
-<pre class="r"><code># I. On doit cleaner les données pour bien pouvoir les isoler : on supprime ce qu&#39;il se passe entre parenthèse pour pouvoir séparer les entités par l&#39;usage de la virgule
-data_loc = data_ %&gt;%
-  select(loisir)
-
-data_loc= data_loc %&gt;%
-  mutate(loisir_easy = gsub(&quot;\\s*\\(.*?\\)&quot;, &#39;&#39;, loisir))%&gt;%
-  mutate(loisir_easy = gsub(&quot; &quot;, &quot;&quot;, loisir_easy))%&gt;%
-  mutate(loisir_easy = str_to_lower(loisir_easy))
-
-
-
-phrases_possibles = c(&quot;Pêche):&quot;, &quot;Chasse&quot;, &quot;Voile&quot;, &quot;vélo&quot;, &quot;natation&quot;,
-                      &quot;Planceàvoile&quot;, &quot;Paddle&quot;,  &quot;Kayak/canoë&quot;, &quot;Kitesurf&quot;, &quot;Equitation&quot;, &quot;Wingfoil&quot;,
-                      &quot;Promenade&quot;, &quot;Marche&quot;, &quot;Naturaliste&quot;)
-phrases_possibles = str_to_lower(phrases_possibles)
-
-# II. On crée une table d&#39;occurence vide
-table_occurrences &lt;- matrix(0,
-                            nrow = nrow(data_), 
-                            ncol = length(phrases_possibles) +1, # On ajoute une case pour prendre en compte les cas &quot;Autres&quot;
-                            dimnames = list(seq(1:nrow(data_)),
-                                             c(phrases_possibles, &quot;Autre&quot;))) # Pour stocker un identifiant
-
-
-
-
-#III. Remplir le tableau avec les occurrences
-for (i in 1:nrow(data_)) {
-  phrases_ = 
-    unlist(# On enlève la structure de liste 
-    strsplit(as.character(data_loc[i, &quot;loisir_easy&quot;]), # qui résulte de la séparation de chaque réponse
-             &quot;,&quot;) # autour de la virgule
-    ) 
-  for (phrase in phrases_) {
-    if (phrase %in% phrases_possibles) { # si elle est dite, 
-      table_occurrences[i, phrase] &lt;- table_occurrences[i, phrase] + 1
-    }else{
-      table_occurrences[i, &quot;Autre&quot;] = table_occurrences[i, &quot;Autre&quot;] +1
-    }
-  }
-}
-
-
-# Q7 : Convertir la matrice en dataframe pour une meilleure lisibilité</code></pre>
-</div>
-</div>
-<div id="synthèse-et-nettoyage-final" class="section level2">
-<h2>Synthèse et nettoyage final</h2>
-<p>On merge tout et on sélectionne les données propres</p>
-<p><strong>Q8 : utilisez le pipe operator (%&gt;%) pour sélectionner les
-colonnes de la full_data et récupérer les colonnes qui ont le nom
-<code>clean</code> avec <code>grepl</code></strong></p>
-<pre class="r"><code>full_data = left_join(data_, table_phoques, by = &#39;ID&#39;)
-full_data = left_join(full_data, table_occurrences_df, by = &#39;ID&#39;)
-#full_data = left_join(full_data, table_loisir, by = &quot;ID&quot;)
-
-data_clean = full_data %&gt;%
-  select(c(&#39;date&#39;, &#39;lieu&#39;, &#39;genre&#39;, &#39;classe_age&#39;,    # Les données déja propres
-           colnames(full_data)[
-             #ICI
-             ]
-           )
-         )</code></pre>
+##     run</code></pre>
+<pre><code>## ── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
+## ✔ dplyr     1.1.4     ✔ readr     2.1.5
+## ✔ forcats   1.0.0     ✔ stringr   1.5.1
+## ✔ ggplot2   3.5.1     ✔ tibble    3.2.1
+## ✔ lubridate 1.9.4     ✔ tidyr     1.3.1
+## ✔ purrr     1.0.2     
+## ── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
+## ✖ dplyr::filter() masks stats::filter()
+## ✖ dplyr::lag()    masks stats::lag()
+## ✖ purrr::modify() masks renv::modify()
+## ℹ Use the conflicted package (&lt;http://conflicted.r-lib.org/&gt;) to force all conflicts to become errors
+## 
+## Attachement du package : &#39;magrittr&#39;
+## 
+## 
+## L&#39;objet suivant est masqué depuis &#39;package:purrr&#39;:
+## 
+##     set_names
+## 
+## 
+## L&#39;objet suivant est masqué depuis &#39;package:tidyr&#39;:
+## 
+##     extract
+## 
+## 
+## 
+## Attachement du package : &#39;stringdist&#39;
+## 
+## 
+## L&#39;objet suivant est masqué depuis &#39;package:magrittr&#39;:
+## 
+##     extract
+## 
+## 
+## L&#39;objet suivant est masqué depuis &#39;package:tidyr&#39;:
+## 
+##     extract
+## 
+## 
+## Welcome! Want to learn more? See two factoextra-related books at https://goo.gl/ve3WBa
+## 
+## Linking to GEOS 3.11.2, GDAL 3.8.2, PROJ 9.3.1; sf_use_s2() is TRUE</code></pre>
+<pre class="r"><code>renv::init(here())</code></pre>
 </div>
 
 

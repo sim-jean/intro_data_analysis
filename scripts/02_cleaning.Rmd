@@ -19,12 +19,19 @@ knitr::opts_chunk$set(echo = FALSE) # pour éviter d'avoir le code dans l'output
 
 ```{r}
 
-library(here)
 library(renv)
 
 if (file.exists("renv.lock")) {
   renv::activate()
 }
+
+library(here)
+library(magrittr)
+library(dplyr)
+library(stringr)
+library(ggplot2)
+library(ggsci)
+library(purrr)
 
 ```
 
@@ -39,6 +46,667 @@ On charge les données :
 data_ = readxl::read_xlsx(here("data", "raw", "baie_somme_2025.xlsx"))
 
 head(data_)
+```
+
+
+## Diagnostic
+
+::: incremental
+
+- On va regarder déja la structure des données et le taux de complétude des données
+- On va ensuite regarder comment standardiser les noms de variables, les réponses aux questions (souvent imparfaites), assigner le bon format etc. 
+
+:::
+
+## Exploration des variables
+
+```{r}
+str(data_$Horodateur)
+str(data_$`Activité professionnelle de la personne interrogée :`)
+str(data_$`Q6 :  Pouvez-vous me dire si vous êtes d’accord avec les affirmations suivantes (cocher lorsque accord) ?`)
+colnames(data_)
+
+```
+---------
+
+
+
+- On a plusieurs informations sur les formats : 
+  - `POSIT`: données temporelles formatées en date
+  - `chr` : données "character" i.e. données textuelles, sans notion d'ordre etc
+- Pour certaines variables on va vouloir passer de données textuelles à des données catégorielles, c'est à dire des données textuelles avec différents niveaux
+- Pour certaines questions à choix multiple, les réponses sont collées entre elles :  
+  - Il va falloir réfléchir à comment les extraire
+  - Et à comment les exploiter
+- Les noms de colonnes ne sont pas pratiques à utiliser : on va les renommer
+
+```{r, echo = T}
+colnames(data_) = c("date", "lieu", "jour", "heure", "genre",
+                    "classe_age", "residence", "loisir", "profession", 
+                    "q1_nom_phoques", "q2_pop_phoques", "q3_vue_phoques", 
+                    "q4_dérangement", "q5_classe_phoque", "q6_avis", "q7_divers")
+```
+
+
+## Lieux 
+
+```{r, echo = T}
+unique(data_$residence)
+unique(data_$lieu)
+```
+
+----
+
+
+- Pas mal de choses qui se ressemblent mais ne sont pas pareilles : `Saint Valéry`, `St Valery`, `Saint Valery sur Somme` etc
+  -  On va essayer de se débarasser de la ponctuation et des lettres majuscules
+  -  Corriger les fautes d'orthographe
+  -  Se débarasser des imprécisions ou choses non nécessaires (depuis 2 ans, (Somme)) etc
+- Tout en conservant toutes les données : [on ne remplace jamais la donnée initiale!!]{.alert}
+- On le fait à la main ici, mais des approches plus structurées existent: 
+  -  Distance entre les groupes nominaux : combien faut il changer de caractères (`stringdist`)
+  -  Matching avec des bases géographiques : on le fera plus tard pour les coordonnées géographiques
+
+
+
+```{r, echo = T}
+
+remplacement = function(x_){
+  x = str_to_lower(x_) # On met tout en minuscule
+  x = x %>%
+    gsub("\\ble\\b", "", .)%>% # On enlève "le" à l'aide d'une expression régulière (regex)
+    gsub("é", "e", .)          # On enlève également les accents aigus et graves
+  
+  # Après inspection, on fait ce qu'on peut pour remplacer ensemble les zones géographiques
+  
+  if(x %in% c(' treport', 'trepot', 'treport', "treport depuis 2 ans")){
+    return('Le Tréport')
+  }else if(x %in% c('abbeville', 'abeville', "abbevilel", "abbville")){
+    return('Abbeville')
+  }else if(x %in% c(' crotoy', 'le crotoy', 'crotoy')){
+    return('Le Crotoy')
+  }else if(x %in% c("berck-sur-mer", "berck sur mer", "berck")){
+    return('Berck-sur-mer')
+  }else if(x %in% c('cayeux-sur-mer', 'cayeux', "cayeux sur mer")){
+    return('Cayeux-sur-mer')
+  # Q1 : A COMPLETER POUR SAINT VALERY JUSQU'A CE QU'UNE SEULE ENTREE FONCTIONNE
+  
+  
+  }else if(x %in% c('hourdel', 'pointe', 'pointe du hourdel')){
+    return("Pointe du Hourdel")
+  }else if(x %in% c("feuquieres en vimeu",  "feuquieres - en - vimeu" )){
+    return('Feuquières-en-Vimeu')
+  }else if(x %in% c('noyelles sur mer', 'noyelle sur mer')){
+    return('Noyelles-sur-mer')
+  }else if(x %in% c("amiens",  "amiens / berck"  )){
+    return("Amiens")
+  }else if(x %in% c('lancheres', 'lanchere', 'lancher', "lanchéres")){
+    return('Lanchéres')
+  }else if(x %in% c('arlay a 5km du crotoy')){
+    return('Arlay')
+  }else if(x %in% c("fauquembergues (résidence secondaire)")){
+    return('Fauquembergues')
+  }else if(x %in% c("villers cotterets(02600)" )){
+    return('Villers Cotterets')
+  }else if( x %in% c("franciere (somme)"  )){
+    return('Francières')
+  }else if( x %in% c("hauts de seine(92)")){
+    return('Hauts de Seine')
+  }else if( x %in% c("Saint-Riquier", "Saint-riquier", "saint-riquier")){
+    return('Saint-Riquier')
+  }else if( x %in% c("pendé", "pende")){
+    return('Pendé')
+  }else if( x %in% c("arras")){
+    return('Arras')
+  }else if( x %in% c("dunkersue")){
+    return('Dunkerque')
+  }else{
+    return(x_)
+  }
+}
+
+
+```
+
+
+
+
+```{r, echo =T}
+
+data_ = data_ %>%
+  mutate(lieu_clean = sapply(lieu, remplacement)) # On applique la fonction remplacement à chaque lieu
+                                                  # et sapply renvoie un vecteur qui est assigné à 
+                                                  # une nouvelle variable
+unique(data_$lieu_clean)
+
+```
+
+Enfin, on enregistre la nouvelle data
+
+```{r}
+
+# Q2 : enregistrez la nouvelle data avec dplyr, mutate et sapply
+
+#unique(data_$residence_clean)
+
+
+
+```
+
+## Variable catégorielle ordonnée : l'âge
+
+On a classé la population par groupes d'âge.  L'usage de variables `factor` permet d'avoir des variables catégorielles ordonnées, que l'on peut représenter sur un axe ordonné en précisant les niveaux (`levels`)
+
+
+```{r, echo = T}
+
+# Q3 : transformez l'age en variable catégorielle ordonnée
+# Utilisez ?levels si besoin$
+
+```
+
+
+```{r}
+
+font_size = 10
+family_ = "Arial"
+legend_position = "bottom"
+bg_color = "white"
+
+data_ %>%
+  ggplot(aes(x=classe_age, fill = classe_age))+
+  geom_bar()+
+  xlab("Classes d'âge")+
+  scale_fill_bmj()+
+  theme_light() +
+  
+  
+  theme(
+      text = element_text(family = family_, size = font_size),
+      plot.title = element_text(family = family_, size = 2*font_size, hjust = .5),
+      axis.title = element_text(family = family_, size = font_size),
+      legend.text = element_text(family = family_, size = .9*font_size),
+      legend.position = "none",
+      legend.title = element_text(family= family_, size = .9*font_size),
+      axis.text = element_text(family = family_, size = font_size),
+      strip.text = element_text(size = font_size),  # Set font size for facet labels
+      strip.background = element_rect(fill = bg_color, color = NA)  # Set background color for facet labels
+    )
+
+
+```
+
+:::
+
+
+
+## Variables continues tronquées : population des phoques
+
+- Variable *continue* : on va surement devoir *discretiser*
+- Qui est limitée à 0
+- Avec beaucoup de non réponse
+
+Challenges techniques : 
+
+- Transformer la variable `chr` en variable `int`
+- On va utiliser la population totale
+
+
+```{r}
+
+# Q4 : Tabulez la population
+
+```
+
+
+```{r, echo = T}
+
+remplacement_1 = function(x_){
+  x = str_to_lower(x_)
+  return(grepl("non", x))
+}
+
+
+remplacement = function(x_, option = "max"){
+  # Approche par regex : 
+  potential_number = x_ %>%
+    gsub(" ", "", .)%>%
+    str_extract_all(.,"\\d+\\.?\\d*")%>%
+    unlist()%>%
+    as.numeric()
+  # On repère les chiffres : 
+  # \\d+ repère un chiffre ou plusieurs
+  # \\.? repère un point décimal
+  # \\d* prent les 0
+  
+  # Ensuite on vérifie s'il y a des "-" ou des "/"
+  
+  tiret_barre = grepl("[-/]", x_)
+
+  # Message d'erreur si l'option n'est pas bien spécifiée  
+  if(!(str_to_lower(option) %in% c("min", "max"))){
+    stop("Error : option is ill picked")
+  }
+  
+    # Enfin, on prend les "beaucoup" en compte : 
+
+  if(x_ %in% c(startsWith(str_to_lower(x_), "beauco"), 
+              'Bcp', 'Non beaucoup', 'Pas du tout (beaucoup)')){
+    return("Beaucoup")
+  }else if(is_empty(potential_number)){
+    if(startsWith(str_to_lower(x_), 'oui')){
+      return('Oui')
+    }else if(grepl("centai", str_to_lower(x_))){
+      return('Centaines')
+    }else if(grepl('milli', str_to_lower(x_))){
+      return('Milliers')
+    }else if(grepl('un', str_to_lower(x_))){
+      return('Quelques uns')
+    }else{
+      return('Non')
+    }
+  }else{
+    if(tiret_barre){
+      if(length(potential_number)>1){
+        if(option=='min'){
+          return(min(potential_number))
+        }else if(option=="max"){
+          return(max(potential_number))
+        }
+      }else{
+        return(as.numeric(potential_number))
+      }
+    }else{
+      return(sum(as.numeric(potential_number)))
+    }
+  }
+}
+
+
+#for(i in 1:nrow(data_)){
+# print(paste(data_[i, 'q2_pop_phoques'],
+#       remplacement(data_[i,'q2_pop_phoques'], option = "max")))
+#}
+
+data_ = data_ %>%
+  mutate(pop_clean_yes_no = sapply(q2_pop_phoques, remplacement_1),
+         pop_clean_max = sapply(q2_pop_phoques, remplacement))
+
+```
+
+
+
+## Variables catégorielles  ordinales : professions
+
+```{r, echo = T}
+t(table(data_$profession))# Pour voir les fréquences
+```
+
+::: fragment
+
+On a encore des problèmes d'encodage : je vous laisse y penser 
+
+:::
+
+::: incremental
+
+- Trouvez les dénominations en CSP les plus pertinentes
+- Regroupez les personnes dans la bonne CSP en : 
+  - Modifiant la fonction `remplacement()`
+  - Et en attribuant les CSP à une nouvelle variable
+  
+:::
+
+---
+
+On peut utiliser deux variables : 
+
+- Une variable de "haut" niveau de classification
+- Une de "bas" niveau : plus de détails
+
+
+::: fragment
+
+On peut utiliser un prétraitement des données et la fonction `startsWith(x, prefix)` pour rassembler tout ce qui commencerait par la même racine
+
+:::
+
+
+-----------
+
+```{r, echo = T}
+
+csp_questionnaire = c("Entreprise/tourisme", "Restauration/hôtellerie" , "Agriculteur (à préciser)", "Pêcheur (préciser)","Commerçant (préciser)", "Agent public",
+                      "Cadre supérieur", "Employé", "Ouvrier")
+
+
+remplacement_questionnaire = function(x_){
+  x = x_%>%
+    str_to_lower()%>%
+    gsub("é", "e", .)%>%
+    gsub("è", "e", .)   
+  
+  if(x %in% c('agriculteur (à preciser)')){
+    return("Agriculteur exploitant")
+  }else if(startsWith(x, "employ") | x %in% c('aide à domicile', 
+                                              'aide soignante', 'assistante à domicile', 
+                                              "famille d'accueil", "tabac", "medical",
+                                              "recruteur de donateurs pour association")){
+    return("Employé.e")
+    
+    # Q5 : utilisez startsWith pour trouver les étudiants, collegiens etc
+  }else if( x %in% c('sans', 'rien', 
+                                                                                                   'sans emploi', 'chômeur',
+                                                                                                   'chômage', 'non', "femme au foyer")){
+    return('Sans activité professionelle (hors retraite)')
+  }else if(startsWith(x, 'retrait')){
+    return('Retraité.e') 
+  }else if(startsWith(x, 'ouvrier') | x %in% c('mecanicien', 'usine')){
+    return("Ouvrier")
+  }else if(startsWith(x, 'foyer') | x %in% c("infirmiere", "maîtresse d'ecole", 'enseignante', 'professeur', 'prof', "foyer d'enfants", "travail avec des enfants handicapes")){
+    return('Professions intermédiaires')
+  }else if(startsWith(x, 'cadr') | startsWith(x, 'intermittente') | x %in% c('traducteur', "archeologue", "dessinateur en bureau d'etude", 'photographe', "agence immobilier") ){
+    return("Cadres et professions intellectuelles supérieures")
+  # Catégories du questionnaire
+  }else if(x %in% c('gerant de restaurant', 'receptionniste en hôtellerie', 'restauration/hôtellerie', "cuisine")){
+    return("Restauration/hôtellerie")
+  }else if(startsWith(x, "entrepr") | startsWith(x, "commerçant")){
+    return("Artisans, commerçants, chefs d'entreprise")
+  }else if(x %in% c('agent public', 'mairie')){
+    return('Agent public')
+  }else{
+    return(x_)
+  }
+    
+}
+
+```
+
+```{r}
+data_ = data_ %>%
+  mutate(professions_clean = sapply(profession, remplacement_questionnaire))
+```
+
+## Variables catégorielles non ordonnées (nominales) : nom des phoques
+
+Ici, on va adopter la même approche par fonction de `remplacement()`
+
+```{r, echo =T}
+table(data_$q1_nom_phoques)
+```
+
+On va prendre comme réponses possible : `oui`, `non`, `Partiel: veau marin` et `Partiel: phoque gris`
+
+**Question 6 : faites une fonction de `remplacement` en utilisant ce qu'on a vu**
+
+
+## Variables catégorielles nominales multiples: avis sur les phoques
+
+La différence ici, c'est que plusieurs choix sont possibles
+
+```{r, echo = T}
+# Trouver toutes les phrases possibles
+
+phrases_ = c() # Initier un stock de phrases vide
+
+for(row_ in 1:nrow(data_)){ # Pour chaque individu
+  candidate_ =  unlist(# On enlève la structure de liste 
+    strsplit(as.character(data_[row_, "q6_avis"]), # qui résulte de la séparation de chaque réponse
+             ", ") # autour de la virgule
+    ) 
+  for(element_ in candidate_){ # On regarde pour chaque phrase cnadidate
+    if(!(element_ %in% phrases_)){ # Si elle a déja été dite
+      phrases_ = c(phrases_, element_) # Sinon, on l'ajoute
+    }
+  }
+}
+# Imprimer les 15 premières phrases
+phrases_[1:15]
+
+```
+
+On a des problèmes de remplissage du questionnaire! Donc, on va récupérer les choix du questionnaire
+
+
+```{r}
+
+phrases_possibles = c("Il faut laisser la nature évoluer librement",
+            "La surfréquentation peut générer des dérangements pour la nature",
+            "Les conflits entre les humains et les phoques augmentent",
+            "Les phoques font partie du patrimoine du territoire",
+            "Il y a trop de phoques veau-marin",
+            "Il y a trop de phoques gris",
+            "Il ne faut pas que le nombre de phoque augmente plus",
+            "Les phoques mangent trop de poissons",
+            "Les phoques représentent une opportunité économique pour le territoire",
+            "Les phoques représentent une menace économique pour le territoire",
+            "Il faudrait un groupe de travail local sur les interactions avec les phoques",
+            "Il faudrait plus de panneaux d’informations sur les phoques",
+            "Il faudrait des barrières pour empêcher de déranger les phoques",
+            "Il faudrait un centre d’information sur les phoques",
+            "Les phoques représentent une menace pour les traditions du territoire"  )
+```
+
+
+
+- Ensuite, on fait ce qu'on appelle du one hot encoding , c'est à dire que l'on: 
+  - Transforme chaque affirmation en une variable
+  - Qui prend la valeur 0 si absente, 1 si présente
+  - Permet de numériser les variables *catégorielles* sans imposer d'ordre
+
+:::
+
+
+
+
+::: fragment
+
+```{r, echo = T}
+
+data_ = data_ %>%
+  mutate(ID = seq(1:nrow(data_))) # On donne un identifiant à chaque individu statistique
+
+# On crée une table d'occurence vide
+table_occurrences <- matrix(0,
+                            nrow = nrow(data_), 
+                            ncol = length(phrases_possibles),
+                            dimnames = list(seq(1:nrow(data_)),
+                                             phrases_possibles)) # Nomme les dimensions
+
+# Remplir le tableau avec les occurrences
+for (i in 1:nrow(data_)) {
+  phrases_ = unlist(                            # On enlève la structure de liste 
+    strsplit(as.character(data_[i, "q6_avis"]), # qui résulte de la séparation de chaque réponse
+             ", ")                              # autour de la virgule
+    ) 
+  for (phrase in phrases_) {                    # Pour chaque phrase exprimée, 
+    if (phrase %in% phrases_possibles) {        # si elle est dite, 
+      table_occurrences[i, phrase] <- table_occurrences[i, phrase] + 1 # on encode
+    }
+  }
+}
+
+
+
+```
+
+:::
+
+```{r}
+
+# Convertir la matrice en dataframe pour une meilleure lisibilité
+
+table_occurrences_df <- as.data.frame(table_occurrences)
+
+colnames(table_occurrences_df) = paste0("q_clean", c('nature_libre','surfréquentation', 'conflits', 
+                                   'patrimoine','trop_veau', 'trop_gris','pas_plus_phoques',
+                                   'trop_poisson','opportunité_économique', 'menace_économique',
+                                   'groupe_travail', 'panneaux',
+                                   'barrières', 'centre_information', 'menace_tradition'))
+
+table_occurrences_df = table_occurrences_df%>%
+  mutate('ID' = seq(1, nrow(table_occurrences_df)))
+```
+
+
+
+
+## Variables catégorielles nominales multiples  : questions sur les phoques
+
+On fait la même chose pour la question sur les phoques
+
+```{r, echo = T}
+phrases_ = c() # Initier un stock de phrases vide
+
+for(row_ in 1:nrow(data_)){ # Pour chaque individu
+  candidate_ =  unlist(# On enlève la structure de liste 
+    strsplit(as.character(data_[row_, "q5_classe_phoque"]), # qui résulte de la séparation de chaque réponse
+             ", ") # autour de la virgule
+    ) 
+  for(element_ in candidate_){ # On regarde pour chaque phrase cnadidate
+    if(!(element_ %in% phrases_)){ # Si elle a déja été dite
+      phrases_ = c(phrases_, element_) # Sinon, on l'ajoute
+    }
+  }
+}
+
+phrases_possibles = c("Un animal sympathique et paisible", "Une espèce invasive et nuisible",
+                      "Un concurrent pour les activités humaines", "Une espèce menacée",
+                      "Un prédateur supérieur"
+                      )
+
+data_ = data_ %>%
+  mutate(identifier = seq(1:nrow(data_))) # On donne un identifiant à chaque individu statistique
+
+
+# On crée une table d'occurence vide
+table_occurrences <- matrix(0,
+                            nrow = nrow(data_), 
+                            ncol = length(phrases_possibles),
+                             dimnames = list(seq(1:nrow(data_)),
+                                             phrases_possibles)) # Pour stocker un identifiant
+
+# Remplir le tableau avec les occurrences
+for (i in 1:nrow(data_)) {
+  phrases_ = unlist(# On enlève la structure de liste 
+    strsplit(as.character(data_[i, "q5_classe_phoque"]), # qui résulte de la séparation de chaque réponse
+             ", ") # autour de la virgule
+    ) 
+  for (phrase in phrases_) {
+    if (phrase %in% phrases_possibles) { # si elle est dite, 
+      table_occurrences[i, phrase] <- table_occurrences[i, phrase] + 1
+    }
+  }
+}
+
+```
+
+```{r}
+
+# Transformer la matrice en dataframe, 
+table_phoques = as.data.frame(table_occurrences)
+colnames(table_phoques) = paste0('clean_phoque_',  # Utiliser paste0 pour éviter un espace entre les éléments
+                                c('paisible', 
+                                  'invasive',
+                                  'concurrent',
+                                  'menacee',
+                                  'prédateur'))
+
+table_phoques = table_phoques %>%
+  mutate('ID' = seq(1, nrow(table_phoques)))
+
+```
+
+## Variables catégorielles nominales multiples : loisirs
+
+::: incremental 
+- Il y a beaucoup trop de réponses uniques (64)
+- Il faut revenir aux résultats du questionnaire, et traiter notamment les réponses collées (variables catégorielles multiples)
+- On refait du one hot encoding
+
+
+:::
+
+
+::: fragment
+
+```{r, echo = T}
+
+# I. On doit cleaner les données pour bien pouvoir les isoler : on supprime ce qu'il se passe entre parenthèse pour pouvoir séparer les entités par l'usage de la virgule
+data_loc = data_ %>%
+  select(loisir)
+
+data_loc= data_loc %>%
+  mutate(loisir_easy = gsub("\\s*\\(.*?\\)", '', loisir))%>%
+  mutate(loisir_easy = gsub(" ", "", loisir_easy))%>%
+  mutate(loisir_easy = str_to_lower(loisir_easy))
+
+
+
+phrases_possibles = c("Pêche):", "Chasse", "Voile", "vélo", "natation",
+                      "Planceàvoile", "Paddle",  "Kayak/canoë", "Kitesurf", "Equitation", "Wingfoil",
+                      "Promenade", "Marche", "Naturaliste")
+phrases_possibles = str_to_lower(phrases_possibles)
+
+# II. On crée une table d'occurence vide
+table_occurrences <- matrix(0,
+                            nrow = nrow(data_), 
+                            ncol = length(phrases_possibles) +1, # On ajoute une case pour prendre en compte les cas "Autres"
+                            dimnames = list(seq(1:nrow(data_)),
+                                             c(phrases_possibles, "Autre"))) # Pour stocker un identifiant
+
+
+
+
+#III. Remplir le tableau avec les occurrences
+for (i in 1:nrow(data_)) {
+  phrases_ = 
+    unlist(# On enlève la structure de liste 
+    strsplit(as.character(data_loc[i, "loisir_easy"]), # qui résulte de la séparation de chaque réponse
+             ",") # autour de la virgule
+    ) 
+  for (phrase in phrases_) {
+    if (phrase %in% phrases_possibles) { # si elle est dite, 
+      table_occurrences[i, phrase] <- table_occurrences[i, phrase] + 1
+    }else{
+      table_occurrences[i, "Autre"] = table_occurrences[i, "Autre"] +1
+    }
+  }
+}
+
+
+# Q7 : Convertir la matrice en dataframe pour une meilleure lisibilité
+
+
+
+```
+
+:::
+
+
+
+## Synthèse et nettoyage final
+
+On merge tout et on sélectionne les données propres
+
+**Q8 : utilisez le pipe operator (%>%) pour sélectionner les colonnes de la full_data et récupérer les colonnes qui ont le nom `clean` avec `grepl`**
+
+```{r, echo = T}
+
+full_data = left_join(data_, table_phoques, by = 'ID')
+full_data = left_join(full_data, table_occurrences_df, by = 'ID')
+#full_data = left_join(full_data, table_loisir, by = "ID")
+
+data_clean = full_data %>%
+  select(c('date', 'lieu', 'genre', 'classe_age',    # Les données déja propres
+           colnames(full_data)[
+             #ICI
+             ]
+           )
+         )
+
+
+
 ```
 
 
