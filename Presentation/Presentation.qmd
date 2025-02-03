@@ -1,0 +1,1111 @@
+---
+title: "Introduction à l'analyse de données"
+subtitle: "Economie Ecologique"
+author:
+  - name: Simon Jean
+    orcid: 0000-0002-3965-8630
+    email: simon.jean@agroparistech.fr
+    affiliations: AgroParisTech - CIRED - PSAE
+
+format: 
+  revealjs:
+    theme: "C:/Users/jean/OneDrive/Desktop/Teaching/AgroParisTech/classes_agroparistech/clean.scss"
+    #"/Users/simonjean/Desktop/Travail/Enseignement/classes_agroparistech/_extensions/grantmcdermott/clean/clean.scss"
+    #"
+    slideNumber: true
+    verticalSeparator: ''    # Creates vertical movement between main sections
+    #separator: '^##'
+    transition: fade
+    navigationMode: linear      # Allows both vertical and horizontal navigation
+    controls: false
+    self-contained: true
+    html-math-method: mathjax
+    always_allow_html: true
+    font-size: "120%"
+
+editor: visual
+---
+
+## Introduction
+
+::: incremental
+-   Le but de cette séance est de vous familiariser avec quelques outils modernes que les économistes *doivent* maîtriser : pour celles et ceux qui auraient besoin d'un rafraichissement sur les structures de données de base (vecteurs, matrices, dataframes) voir le [cours de Laurent Rouvière](https://lrouviere.github.io/TUTO_R/objetsR.html)
+-   On utilisera le logiciel R, et on va :
+    -   Apprendre un workflow utile pour tous vos projets
+    -   Importer et nettoyer des données
+    -   Faire des statistiques descriptives (plus ou moins compliquées)
+    -   Un peu de cartographie
+-   De façon générale, l'intelligence artificielle (ChatGPT, Claude etc) sont hyper performants : n'hésitez pas vous en aider, à apprendre avec
+
+:::
+
+## R
+
+::: incremental
+-   Langage de programmation libre et open source interprété, datant des années 1990, développé par R. Ihaka et R. Gentleman
+-   Destiné à l'analyse statistique et à la visualisation de données
+-   Langage populaire parmi les statisticiens, chercheurs et data-scientists
+-   Utilise des [packages]{.bg} c'est à dire des collections de fonctions qui permettent de faire une grande variété de choses
+-   Pour s'en servir: on installe R, puis un [Integrated Development Environment (IDE)]{.bg} comme RStudio par exemple
+    -   Pour ceux qui ne l'auraient pas : [installer R et RStudio](https://posit.co/download/rstudio-desktop/)
+:::
+
+# Introduction et installation
+
+## Projets sur R
+
+::: incremental
+-   Premièrement, on crée un [projet]{.bg}. Ils permettent de :
+    -   Regrouper tout le code au sein d'une [architecture reproductible]{.bg}
+    -   Créer des [environnements]{.bg} afin d'avoir un code *reproductible*, gérant les dépendances entre projets et dans le temps
+    -   Partager rapidement et facilement le code entre différents utilisateurs
+    -   Suivre dans le temps via le [contrôle de version]{.bg}, notamment en utilisant Git (ce sera pour une autre fois)
+-   Il faut donc créer un nouveau projet:
+    -   Créez un dossier facilement identifiable sur votre bureau, nommé `Projets`
+    -   Ouvrez `R Studio`, et cliquez sur `File > New Project`
+    -   Puis `New Directory > New Project` puis nommez le `analyse_economie_ecologique` ou ce que vous préférez comme titre de projet
+    -   Vous avez créé un projet!
+:::
+
+## Architecture
+
+Le but est d'avoir une [architecture]{.bg} claire, pour que vos résultats puissent être reproduits, avec :
+
+::: incremental
+-   Les [scripts]{.bg} : c'est le texte, le code qui sera exécuté
+-   Les [données]{.bg} : brutes ou nettoyées, ou additionelles de sources extérieures
+-   Les [résultats]{.bg}: figures, tableaux etc
+-   La [documentation]{.bg} : les rapports, ou encore un fichier qui s'appelle le `Readme.md`, qui détaille le projet, les instructions d'utilisation etc.
+:::
+
+------------------------------------------------------------------------
+
+::: incremental
+-   Pour commencer, vous allez aller sur la [page Github du cours](https://github.com/sim-jean/intro_data_analysis), pour télécharger les scripts qui vont nous permettre de créer l'architecture, et mener les analyses.
+    - Prenez simplement les fichiers en `.md`
+    -   Téléchargez également le fichier `baie_somme_2025.xlsx`
+
+:::
+
+::: fragment
+![](C:/Users/jean/OneDrive/Desktop/Teaching/AgroParisTech/Master EEET/M1/Economie écologique/intro_data_analysis/Presentation/download_code.jpg)
+:::
+
+-----
+
+::: incremental
+
+-   Dans la console de R, vous allez d'abord créer le dossier `scripts`, afin d'y enregistrer ces scripts que vous aurez téléchargé : 
+  - On va utiliser le package `here` qui facilite le traitement des adresses des fichiers au sein de votre ordinateur
+  - Puis on va créer les dossiers
+
+:::
+
+::: fragment
+
+```{r}
+renv::autoload()
+
+```
+
+
+```{r, echo=T}
+
+
+if(!("here" %in% installed.packages())){ # Vérifie si le package est déja installé
+  install.packages("here") # L'installe si besoin
+}
+
+library(here) # Charge la bibliothèque
+
+if(!dir.exists(here("scripts"))){ # Vérifie si le chemin existe déja
+  dir.create(here("scripts"))
+}
+
+print(paste(here("scripts"), " est créé"))
+
+
+```
+:::
+
+
+----------
+
+::: incremental
+- Utilisez le script `01_Setup.md`
+  - On utilise un format spécifique, le [markdown]{.bg}, qui mélange le texte, le code Latex si besoin, ainsi que l'analyse de données dans des blocs de code
+  - Vous pouvez l'exporter en cliquant sur `Render` et avoir un document sous format `hmtl`, ou `pdf` que vous pouvez partager
+  
+- On veut créer l'architecture suivante
+  
+:::
+
+
+ 
+------------
+
+```{r}
+# Exemple de structure de répertoires pour un projet R
+structure <- "
+Projet/
+├── R/                   # Contient tous les scripts R du projet
+│   ├── 01_utilities.rmd # Script d'importation des données
+│   ├── 02_cleaning.rmd    # Script de nettoyage des données
+│   ├── 03_analysis.rmd    # Script d'analyse des données
+│   └── 04_visualisation.rmd # Script pour les graphiques et visualisations
+├── data/                # Contient les fichiers de données brutes et traitées
+│   ├── raw/             # Données brutes
+│   │   └── data1.csv    # Exemple de fichier de données brutes
+│   ├── processed/       # Données nettoyées et traitées
+│   │   └── data_clean.csv
+│   └── external/        # Données externes ou partagées (ex. bases de données publiques)
+│       └── source.csv
+├── results/             # Résultats des analyses (sorties, graphiques, tableaux)
+│   ├── figures/         # Graphiques générés (png, pdf, etc.)
+│   │   └── plot1.png
+│   └── tables/          # Tables générées (ex. CSV ou LaTeX)
+│       └── table1.csv
+├── docs/                 # Documentation du projet (rapports, instructions, etc.)
+│   ├── report.pdf       # Rapport principal du projet
+│   └── README.md        # Explication du projet, instructions d'utilisation
+├── .gitignore           # Fichier pour ignorer certains fichiers dans un dépôt Git (si applicable)
+├── renv.lock            # Fichier verrouillant les versions des packages (géré par renv)
+├── renv/                # Dossier contenant l'environnement isolé géré par renv
+└── README.md            # Fichier d'accueil du projet pour décrire brièvement de quoi il s'agit
+"
+cat(structure)
+```
+
+----------
+
+On utilise le code suivant : 
+
+
+```{r, echo = T}
+if(!dir.exists(here("data"))){ # Vérifie si le chemin existe déja
+  dir.create(here("data"))
+  dir.create(here("data", "raw")) # Crée des dossiers à l'intérieur de \data
+  dir.create(here("data", "processed"))
+  dir.create(here("data", "external"))
+  
+  dir.create(here("results"))
+  dir.create(here("results", "figure"))
+  dir.create(here("results", "tables"))
+
+  dir.create(here("docs"))
+}
+
+print("Architecture à jour")
+
+```
+
+## Packages et environnements
+
+Ensuite, on va télécharger et installer des [packages]{.bg} utiles : 
+
+::: incremental
+- Le package `rmarkdown` et `knitr` pour effectivement avoir des documents en markdown qui soient pris en compte par R
+- La collection de package `tidyverse` qui contient entre autres :
+  - `tidyr` et `dplyr` : sont essentiels pour la manipulation de données de base ainsi que le recodage, la création de nouvelles variables, le filtrage etc
+  - `gpplot2` et `ggsci`: le package de référence pour la data visualisation et des `themes()` (styles) de référence dans la littérature scientifique
+- `readxl` : pour lire des données en format `.xlsx`
+- `magrittr`: un package qui permet d'utiliser l'opérateur [pipe]{.bg} `%>%`, qui permet de connecter les opérations entre elles, simplifiant le processus de $g(h(x))$ à `x %>% h() %>% g()`
+- `stringr` et `stringdist`: pour traiter les données textuelles
+- `renv` : on va créer un [environnement]{.bg}, permettant de travailler avec les bons outils
+- Des packages dont je vous expliquerai ensuite la nécessité pour les analyses statistiques et cartographiques que l'on va mener comme `factoextra`, `factoMineR`, `sf` et `sp`
+
+
+:::
+
+
+## Environnement
+
+::: incremental
+- Clé pour rendre le travail [reproductible]{.bg} : 
+  - Les versions des packages sont stockées
+  - Quand l'environnement est partagé, tout le monde travail avec les mêmes packages, permettant la reproducibilité entre personnes et dans le temps
+- Chaque projet peut avoir des versions de package différentes sans encombre
+
+::::
+
+
+-----
+
+
+```{r, echo = T}
+
+# I. Installer le package renv s'il ne l'est pas déja dans l'environnement global
+if(!("renv" %in% installed.packages())){
+  install.packages("renv")
+}
+
+library(renv)
+
+# II. Activation ou création de l'environnement
+
+if(!dir.exists(here("renv"))){ # si l'environnement n'existe pas  déja (ce qui est mon cas)
+  renv::init()               # sinon, on l'initialise
+}else{
+  #renv::activate()
+}
+
+# III. Installer chaque package
+
+
+packages_to_install = c("rmarkdown", "knitr", "tidyverse", "readxl", 
+                        "magrittr", "factoextra", "FactoMineR", "sf", "sp", "here", "ggsci")
+
+install_and_load <- function(packages){
+  for (pkg in packages){    
+    if(!(pkg %in% installed.packages())){# Pour chaque package de la liste
+    renv::install(pkg)       # installe le cas échéant     
+    }
+    library(pkg, character.only = TRUE)           # Puis le charge
+  }
+}
+
+install_and_load(packages_to_install) 
+
+renv::snapshot()
+
+
+
+```
+# Data cleaning 
+
+
+## Chargement des données
+
+- On va maintenant pouvoir charger les données
+  - Enregistrez le fichier `baie_somme_2025.xlsx` dans `data\raw`
+  
+::: fragment 
+
+```{r, echo = T}
+
+data_ = readxl::read_xlsx(here("data", "raw", "baie_somme_2025.xlsx"))
+
+head(data_)
+
+```
+
+:::
+
+## Diagnostic
+
+::: incremental
+
+- On va regarder déja la structure des données et le taux de complétude des données
+- On va ensuite regarder comment standardiser les noms de variables, les réponses aux questions (souvent imparfaites), assigner le bon format etc. 
+
+:::
+
+## Exploration des variables
+
+```{r}
+str(data_$Horodateur)
+str(data_$`Activité professionnelle de la personne interrogée :`)
+str(data_$`Q6 :  Pouvez-vous me dire si vous êtes d’accord avec les affirmations suivantes (cocher lorsque accord) ?`)
+colnames(data_)
+
+```
+---------
+
+::: incremental
+
+- On a plusieurs informations sur les formats : 
+  - `POSIT`: données temporelles formatées en date
+  - `chr` : données "character" i.e. données textuelles, sans notion d'ordre etc
+- Pour certaines variables on va vouloir passer de données textuelles à des [données catégorielles]{.bg}, c'est à dire des données textuelles avec différents niveaux
+- Pour certaines questions [à choix multiple]{.bg}, les réponses sont collées entre elles :  
+  - Il va falloir réfléchir à comment les extraire
+  - Et à comment les exploiter
+- Les noms de colonnes ne sont pas pratiques à utiliser : on va les renommer
+
+:::
+
+::: fragment
+
+```{r, echo = T}
+colnames(data_) = c("date", "lieu", "jour", "heure", "genre",
+                    "classe_age", "residence", "loisir", "profession", 
+                    "q1_nom_phoques", "q2_pop_phoques", "q3_vue_phoques", 
+                    "q4_dérangement", "q5_classe_phoque", "q6_avis", "q7_divers")
+```
+
+
+:::
+
+
+
+
+
+## Lieux 
+
+```{r, echo = T}
+unique(data_$residence)
+unique(data_$lieu)
+```
+
+----
+
+::: incremental
+
+- Pas mal de choses qui se ressemblent mais ne sont pas pareilles : `Saint Valéry`, `St Valery`, `Saint Valery sur Somme` etc
+  -  On va essayer de se débarasser de la ponctuation et des lettres majuscules
+  -  Corriger les fautes d'orthographe
+  -  Se débarasser des imprécisions ou choses non nécessaires (depuis 2 ans, (Somme)) etc
+- Tout en conservant toutes les données : [on ne remplace jamais la donnée initiale!!]{.alert}
+- On le fait à la main ici, mais des approches plus structurées existent: 
+  -  Distance entre les groupes nominaux : combien faut il changer de caractères (`stringdist`)
+  -  Matching avec des bases géographiques : on le fera plus tard pour les coordonnées géographiques
+
+:::
+
+::: fragment
+[Q1 : Complétez pour St Valery]{.bg}
+:::
+
+------------
+
+
+```{r, echo = T}
+
+remplacement = function(x_){
+  x = str_to_lower(x_) # On met tout en minuscule
+  x = x %>%
+    gsub("\\ble\\b", "", .)%>% # On enlève "le" à l'aide d'une expression régulière (regex)
+    gsub("é", "e", .)          # On enlève également les accents aigus et graves
+  
+  # Après inspection, on fait ce qu'on peut pour remplacer ensemble les zones géographiques
+  
+  if(x %in% c(' treport', 'trepot', 'treport', "treport depuis 2 ans")){
+    return('Le Tréport')
+  }else if(x %in% c('abbeville', 'abeville', "abbevilel", "abbville")){
+    return('Abbeville')
+  }else if(x %in% c(' crotoy', 'le crotoy', 'crotoy')){
+    return('Le Crotoy')
+  }else if(x %in% c("berck-sur-mer", "berck sur mer", "berck")){
+    return('Berck-sur-mer')
+  }else if(x %in% c('cayeux-sur-mer', 'cayeux', "cayeux sur mer")){
+    return('Cayeux-sur-mer')
+  }else if(x %in% c('saint valery sur somme',"saimt valery","saint-valery-sur-somme",
+                    "saint valéry", "saint valery", "st valery", "vers saint valery" ,
+                    "saint-valerie-sur-somme")){
+    return('Saint-Valery-sur-Somme')
+  }else if(x %in% c('hourdel', 'pointe', 'pointe du hourdel')){
+    return("Pointe du Hourdel")
+  }else if(x %in% c("feuquieres en vimeu",  "feuquieres - en - vimeu" )){
+    return('Feuquières-en-Vimeu')
+  }else if(x %in% c('noyelles sur mer', 'noyelle sur mer')){
+    return('Noyelles-sur-mer')
+  }else if(x %in% c("amiens",  "amiens / berck"  )){
+    return("Amiens")
+  }else if(x %in% c('lancheres', 'lanchere', 'lancher', "lanchéres")){
+    return('Lanchéres')
+  }else if(x %in% c('arlay a 5km du crotoy')){
+    return('Arlay')
+  }else if(x %in% c("fauquembergues (résidence secondaire)")){
+    return('Fauquembergues')
+  }else if(x %in% c("villers cotterets(02600)" )){
+    return('Villers Cotterets')
+  }else if( x %in% c("franciere (somme)"  )){
+    return('Francières')
+  }else if( x %in% c("hauts de seine(92)")){
+    return('Hauts de Seine')
+  }else if( x %in% c("Saint-Riquier", "Saint-riquier", "saint-riquier")){
+    return('Saint-Riquier')
+  }else if( x %in% c("pendé", "pende")){
+    return('Pendé')
+  }else if( x %in% c("arras")){
+    return('Arras')
+  }else if( x %in% c("dunkersue")){
+    return('Dunkerque')
+  }
+  
+  else{
+    return(x_)
+  }
+}
+
+
+```
+
+
+------
+
+```{r, echo =T}
+
+data_ = data_ %>%
+  mutate(lieu_clean = sapply(lieu, remplacement)) # On applique la fonction remplacement à chaque lieu
+                                                  # et sapply renvoie un vecteur qui est assigné à 
+                                                  # une nouvelle variable
+unique(data_$lieu_clean)
+
+```
+
+::: fragment
+
+[Q2 : enregistrez la nouvelle data avec dplyr, sapply]{.bg}
+
+:::
+
+
+--------
+
+```{r}
+
+data_ = data_ %>%
+  mutate(residence_clean = sapply(residence, remplacement))
+
+unique(data_$residence_clean)
+
+
+
+```
+
+## Variable catégorielle ordonnée : l'âge
+
+On a classé la population par groupes d'âge.  L'usage de variables `factor` permet d'avoir des [variables catégorielles ordonnées]{.bg}, que l'on peut représenter sur un axe ordonné en précisant les niveaux (`levels`)
+
+::: fragment
+
+[Q3: transformez l'âge en variable facteur]{.bg}
+
+Si vous ne savez pas comment vous y prendre, utilisez `?nom_de_la_fonction` pour trouver de l'aide
+
+:::
+
+---------- 
+
+
+```{r, echo = T}
+
+data_$classe_age = factor(data_$classe_age, 
+                          levels = c("<20 ans","20-35 ans","35-50 ans",
+                                     "50-65 ans", ">65 ans"))
+```
+
+::: fragment
+
+```{r}
+
+font_size = 10
+family_ = "Arial"
+legend_position = "bottom"
+bg_color = "white"
+
+data_ %>%
+  ggplot(aes(x=classe_age, fill = classe_age))+
+  geom_bar()+
+  xlab("Classes d'âge")+
+  scale_fill_bmj()+
+  theme_light() +
+  
+  
+  theme(
+      text = element_text(family = family_, size = font_size),
+      plot.title = element_text(family = family_, size = 2*font_size, hjust = .5),
+      axis.title = element_text(family = family_, size = font_size),
+      legend.text = element_text(family = family_, size = .9*font_size),
+      legend.position = "none",
+      legend.title = element_text(family= family_, size = .9*font_size),
+      axis.text = element_text(family = family_, size = font_size),
+      strip.text = element_text(size = font_size),  # Set font size for facet labels
+      strip.background = element_rect(fill = bg_color, color = NA)  # Set background color for facet labels
+    )
+
+
+```
+
+:::
+
+
+
+## Variables continues tronquées : population des phoques
+
+- Variable *continue* : on va surement devoir *discretiser*
+- Qui est limitée à 0
+- Avec beaucoup de non réponse
+
+Challenges techniques : 
+
+- Transformer la variable `chr` en variable `int`
+- On va utiliser la population totale
+
+::: fragment
+
+[Q4 : Tabulez la population des phoques!]{.bg}
+
+:::
+
+--- 
+
+```{r}
+table(data_$q2_pop_phoques)
+```
+
+----------
+
+```{r, echo = T}
+
+remplacement_1 = function(x_){
+  return(grepl("non", str_to_lower(x_)))
+}
+
+
+remplacement = function(x_, option = "max"){
+  # Approche par regex : 
+  potential_number = x_ %>%
+    gsub(" ", "", .)%>%
+    str_extract_all(.,"\\d+\\.?\\d*")%>%
+    unlist()%>%
+    as.numeric()
+  # On repère les chiffres : 
+  # \\d+ repère un chiffre ou plusieurs
+  # \\.? repère un point décimal
+  # \\d* prent les 0
+  
+  # Ensuite on vérifie s'il y a des "-" ou des "/"
+  
+  tiret_barre = grepl("[-/]", x_)
+
+  # Message d'erreur si l'option n'est pas bien spécifiée  
+  if(!(str_to_lower(option) %in% c("min", "max"))){
+    stop("Error : option is ill picked")
+  }
+  
+    # Enfin, on prend les "beaucoup" en compte : 
+
+  if(x_ %in% c(startsWith(str_to_lower(x_), "beauco"), 
+              'Bcp', 'Non beaucoup', 'Pas du tout (beaucoup)')){
+    return("Beaucoup")
+  }else if(is_empty(potential_number)){
+    if(startsWith(str_to_lower(x_), 'oui')){
+      return('Oui')
+    }else if(grepl("centai", str_to_lower(x_))){
+      return('Centaines')
+    }else if(grepl('milli', str_to_lower(x_))){
+      return('Milliers')
+    }else if(grepl('un', str_to_lower(x_))){
+      return('Quelques uns')
+    }else{
+      return('Non')
+    }
+  }else{
+    if(tiret_barre){
+      if(length(potential_number)>1){
+        if(option=='min'){
+          return(min(potential_number))
+        }else if(option=="max"){
+          return(max(potential_number))
+        }
+      }else{
+        return(as.numeric(potential_number))
+      }
+    }else{
+      return(sum(as.numeric(potential_number)))
+    }
+  }
+}
+
+
+#for(i in 1:nrow(data_)){
+# print(paste(data_[i, 'q2_pop_phoques'],
+#       remplacement(data_[i,'q2_pop_phoques'], option = "max")))
+#}
+
+data_ = data_ %>%
+  mutate(pop_clean_yes_no = sapply(q2_pop_phoques, remplacement_1),
+         pop_clean_max = sapply(q2_pop_phoques, remplacement))
+
+
+```
+
+
+
+## Variables catégorielles  ordinales : professions
+
+```{r, echo = T}
+t(table(data_$profession))# Pour voir les fréquences
+```
+
+::: fragment
+
+On a encore des problèmes d'encodage : je vous laisse y penser 
+
+:::
+
+::: incremental
+
+- Trouvez les dénominations en CSP les plus pertinentes
+- Regroupez les personnes dans la bonne CSP en : 
+  - Modifiant la fonction `remplacement()`
+  - Et en attribuant les CSP à une nouvelle variable
+  
+:::
+
+---
+
+::: fragment
+
+On peut utiliser un prétraitement des données et la fonction `startsWith(x, prefix)` pour rassembler tout ce qui commencerait par la même racine
+
+:::
+
+::: fragment
+
+[Q5 : utilisez `startsWith()` pour compléter la fonction suivante]
+
+:::
+
+
+-----------
+
+```{r, echo = T}
+
+csp_questionnaire = c("Entreprise/tourisme", "Restauration/hôtellerie" , "Agriculteur (à préciser)", 
+                      "Pêcheur (préciser)","Commerçant (préciser)", "Agent public",
+                      "Cadre supérieur", "Employé", "Ouvrier")
+
+
+remplacement_questionnaire = function(x_){
+  x = x_%>%
+    str_to_lower()%>%
+    gsub("é", "e", .)%>%
+    gsub("è", "e", .)   
+  
+  if(x %in% c('agriculteur (à preciser)')){
+    return("Agriculteur exploitant")
+  }else if(startsWith(x, "employ") | x %in% c('aide à domicile', 
+                                              'aide soignante', 'assistante à domicile', 
+                                              "famille d'accueil", "tabac", "medical",
+                                              "recruteur de donateurs pour association")){
+    return("Employé.e")
+  }else if(x %in% c('sans', 'rien', 'sans emploi', 'chômeur','chômage', 'non', "femme au foyer")){ 
+    # COMPLETER L'EXPRESSION
+    return('Sans activité professionelle (hors retraite)')
+  }else if(startsWith(x, 'retrait')){
+    return('Retraité.e') 
+  }else if(startsWith(x, 'ouvrier') | x %in% c('mecanicien', 'usine')){
+    return("Ouvrier")
+  }else if(startsWith(x, 'foyer') | x %in% c("infirmiere", "maîtresse d'ecole", 'enseignante', 'professeur', 'prof', "foyer d'enfants", "travail avec des enfants handicapes")){
+    return('Professions intermédiaires')
+  }else if(startsWith(x, 'cadr') | startsWith(x, 'intermittente') | x %in% c('traducteur', "archeologue", "dessinateur en bureau d'etude", 'photographe', "agence immobilier") ){
+    return("Cadres et professions intellectuelles supérieures")
+  # Catégories du questionnaire
+  }else if(x %in% c('gerant de restaurant', 'receptionniste en hôtellerie', 'restauration/hôtellerie', "cuisine")){
+    return("Restauration/hôtellerie")
+  }else if(startsWith(x, "entrepr") | startsWith(x, "commerçant")){
+    return("Artisans, commerçants, chefs d'entreprise")
+  }else if(x %in% c('agent public', 'mairie')){
+    return('Agent public')
+  }else{
+    return(x_)
+  }
+    
+}
+
+```
+
+-----------
+
+```{r, echo = T}
+
+csp_questionnaire = c("Entreprise/tourisme", "Restauration/hôtellerie" , "Agriculteur (à préciser)", "Pêcheur (préciser)","Commerçant (préciser)", "Agent public",
+                      "Cadre supérieur", "Employé", "Ouvrier")
+
+
+remplacement_questionnaire = function(x_){
+  x = x_%>%
+    str_to_lower()%>%
+    gsub("é", "e", .)%>%
+    gsub("è", "e", .)   
+  
+  if(x %in% c('agriculteur (à preciser)')){
+    return("Agriculteur exploitant")
+  }else if(startsWith(x, "employ") | x %in% c('aide à domicile', 
+                                              'aide soignante', 'assistante à domicile', 
+                                              "famille d'accueil", "tabac", "medical",
+                                              "recruteur de donateurs pour association")){
+    return("Employé.e")
+  }else if((startsWith(x, "etudian") | startsWith(x, "eleve") | startsWith(x, "colleg") | x %in% c('sans', 'rien', 
+                                                                                                   'sans emploi', 'chômeur',
+                                                                                                   'chômage', 'non', "femme au foyer"))){
+    return('Sans activité professionelle (hors retraite)')
+  }else if(startsWith(x, 'retrait')){
+    return('Retraité.e') 
+  }else if(startsWith(x, 'ouvrier') | x %in% c('mecanicien', 'usine')){
+    return("Ouvrier")
+  }else if(startsWith(x, 'foyer') | x %in% c("infirmiere", "maîtresse d'ecole", 'enseignante', 'professeur', 'prof', "foyer d'enfants", "travail avec des enfants handicapes")){
+    return('Professions intermédiaires')
+  }else if(startsWith(x, 'cadr') | startsWith(x, 'intermittente') | x %in% c('traducteur', "archeologue", "dessinateur en bureau d'etude", 'photographe', "agence immobilier") ){
+    return("Cadres et professions intellectuelles supérieures")
+  # Catégories du questionnaire
+  }else if(x %in% c('gerant de restaurant', 'receptionniste en hôtellerie', 'restauration/hôtellerie', "cuisine")){
+    return("Restauration/hôtellerie")
+  }else if(startsWith(x, "entrepr") | startsWith(x, "commerçant")){
+    return("Artisans, commerçants, chefs d'entreprise")
+  }else if(x %in% c('agent public', 'mairie')){
+    return('Agent public')
+  }else{
+    return(x_)
+  }
+    
+}
+
+```
+
+
+```{r}
+data_ = data_ %>%
+  mutate(professions_clean = sapply(profession, remplacement_questionnaire))
+```
+
+## Variables catégorielles non ordonnées (nominales) : nom des phoques
+
+Ici, on va adopter la même approche par fonction de `remplacement()`
+
+```{r, echo =T}
+table(data_$q1_nom_phoques)
+```
+
+On va prendre comme réponses possible : `oui`, `non`, `Partiel: veau marin` et `Partiel: phoque gris`
+
+::: fragment
+
+[Q6 - Faites une fonction de remplacement pour les phoques]{.bg}
+
+:::
+
+```{r}
+
+remplacement = function(x){
+  if(x %in% c('Veaux-marins et phoques gris', 'Veau marin , phoque gris', 'OUI phoque gris et phoque veau-marin',
+              'Gris et veaux marins', 'Veau marin et phoque', 'Les deux', 'Oui', 'Gris et veau marin', 
+              'Gris et veaux marins', "Les deux ", 'Oui les deux')){
+    return('Oui')
+  }else if(x %in% c('Non', 'nn', 'Nob', 'Nln', 'Non', 'Nn', 
+                    'non', 'Pas de tout', 'Touriste', 'Oui plus ou moins')){
+    return('Non')
+  }else if(x %in% c('Oui (manque les phoques gris)', 'Veau-marin', 
+                    'Phoque veau-marin oui', 'Vaumarin', 'Veau marin',
+                    'Veau-marin et phoque commun', 'Veau-marin', 'Oui veau-marin')){
+    return("partiel : Veau-marin")
+  }else if(x %in% c('Gris', 'Oui phoque gris', 'Phoque gris et blanc', 'Phoques gris')){
+    return('Partiel : phoque gris')
+  }else{
+    return(x)
+  }
+}
+
+data_ = data_ %>%
+  mutate(q2_pop_clean = sapply(q2_pop_phoques, remplacement))
+
+```
+
+
+## Variables catégorielles nominales multiples: avis sur les phoques
+
+La différence ici, c'est que plusieurs choix sont possibles
+
+```{r, echo = T}
+# Trouver toutes les phrases possibles
+
+phrases_ = c() # Initier un stock de phrases vide
+
+for(row_ in 1:nrow(data_)){ # Pour chaque individu
+  candidate_ =  unlist(# On enlève la structure de liste 
+    strsplit(as.character(data_[row_, "q6_avis"]), # qui résulte de la séparation de chaque réponse
+             ", ") # autour de la virgule
+    ) 
+  for(element_ in candidate_){ # On regarde pour chaque phrase cnadidate
+    if(!(element_ %in% phrases_)){ # Si elle a déja été dite
+      phrases_ = c(phrases_, element_) # Sinon, on l'ajoute
+    }
+  }
+}
+# Imprimer les 15 premières phrases
+phrases_[1:15]
+
+```
+
+On a des problèmes de remplissage du questionnaire!
+
+-------------
+
+On va récupérer les choix du questionnaire
+
+
+```{r}
+
+phrases_possibles = c("Il faut laisser la nature évoluer librement",
+            "La surfréquentation peut générer des dérangements pour la nature",
+            "Les conflits entre les humains et les phoques augmentent",
+            "Les phoques font partie du patrimoine du territoire",
+            "Il y a trop de phoques veau-marin",
+            "Il y a trop de phoques gris",
+            "Il ne faut pas que le nombre de phoque augmente plus",
+            "Les phoques mangent trop de poissons",
+            "Les phoques représentent une opportunité économique pour le territoire",
+            "Les phoques représentent une menace économique pour le territoire",
+            "Il faudrait un groupe de travail local sur les interactions avec les phoques",
+            "Il faudrait plus de panneaux d’informations sur les phoques",
+            "Il faudrait des barrières pour empêcher de déranger les phoques",
+            "Il faudrait un centre d’information sur les phoques",
+            "Les phoques représentent une menace pour les traditions du territoire"  )
+```
+
+
+::: incremental
+
+- Ensuite, on fait ce qu'on appelle du [one hot encoding]{.bg}, c'est à dire que l'on: 
+  - Transforme chaque affirmation en une variable
+  - Qui prend la valeur 0 si absente, 1 si présente
+  - Permet de numériser les variables *catégorielles* sans imposer d'ordre
+
+:::
+
+
+
+::: fragment
+
+```{r, echo = T}
+
+data_ = data_ %>%
+  mutate(ID = seq(1:nrow(data_))) # On donne un identifiant à chaque individu statistique
+
+# On crée une table d'occurence vide
+table_occurrences <- matrix(0,
+                            nrow = nrow(data_), 
+                            ncol = length(phrases_possibles),
+                            dimnames = list(seq(1:nrow(data_)),
+                                             phrases_possibles)) # Nomme les dimensions
+
+# Remplir le tableau avec les occurrences
+for (i in 1:nrow(data_)) {
+  phrases_ = unlist(                            # On enlève la structure de liste 
+    strsplit(as.character(data_[i, "q6_avis"]), # qui résulte de la séparation de chaque réponse
+             ", ")                              # autour de la virgule
+    ) 
+  for (phrase in phrases_) {                    # Pour chaque phrase exprimée, 
+    if (phrase %in% phrases_possibles) {        # si elle est dite, 
+      table_occurrences[i, phrase] <- table_occurrences[i, phrase] + 1 # on encode
+    }
+  }
+}
+
+
+
+```
+
+:::
+
+::: fragment
+
+[Q7 : Convertir la matrice en dataframe pour une meilleure lisibilité]{.bg}
+
+```{r}
+
+# Convertir la matrice en dataframe pour une meilleure lisibilité
+
+table_occurrences_df <- as.data.frame(table_occurrences)
+
+colnames(table_occurrences_df) = paste0("q_clean", c('nature_libre','surfréquentation', 'conflits', 
+                                   'patrimoine','trop_veau', 'trop_gris','pas_plus_phoques',
+                                   'trop_poisson','opportunité_économique', 'menace_économique',
+                                   'groupe_travail', 'panneaux',
+                                   'barrières', 'centre_information', 'menace_tradition'))
+
+table_occurrences_df = table_occurrences_df%>%
+  mutate('ID' = seq(1, nrow(table_occurrences_df)))
+```
+
+
+
+
+## Variables catégorielles nominales multiples  : questions sur les phoques
+
+On fait la même chose pour la question sur les phoques
+
+```{r, echo = T}
+phrases_ = c() # Initier un stock de phrases vide
+
+for(row_ in 1:nrow(data_)){ # Pour chaque individu
+  candidate_ =  unlist(# On enlève la structure de liste 
+    strsplit(as.character(data_[row_, "q5_classe_phoque"]), # qui résulte de la séparation de chaque réponse
+             ", ") # autour de la virgule
+    ) 
+  for(element_ in candidate_){ # On regarde pour chaque phrase cnadidate
+    if(!(element_ %in% phrases_)){ # Si elle a déja été dite
+      phrases_ = c(phrases_, element_) # Sinon, on l'ajoute
+    }
+  }
+}
+
+phrases_possibles = c("Un animal sympathique et paisible", "Une espèce invasive et nuisible",
+                      "Un concurrent pour les activités humaines", "Une espèce menacée",
+                      "Un prédateur supérieur"
+                      )
+
+data_ = data_ %>%
+  mutate(identifier = seq(1:nrow(data_))) # On donne un identifiant à chaque individu statistique
+
+
+# On crée une table d'occurence vide
+table_occurrences <- matrix(0,
+                            nrow = nrow(data_), 
+                            ncol = length(phrases_possibles),
+                             dimnames = list(seq(1:nrow(data_)),
+                                             phrases_possibles)) # Pour stocker un identifiant
+
+# Remplir le tableau avec les occurrences
+for (i in 1:nrow(data_)) {
+  phrases_ = unlist(# On enlève la structure de liste 
+    strsplit(as.character(data_[i, "q5_classe_phoque"]), # qui résulte de la séparation de chaque réponse
+             ", ") # autour de la virgule
+    ) 
+  for (phrase in phrases_) {
+    if (phrase %in% phrases_possibles) { # si elle est dite, 
+      table_occurrences[i, phrase] <- table_occurrences[i, phrase] + 1
+    }
+  }
+}
+
+```
+
+```{r}
+
+# Transformer la matrice en dataframe, 
+table_phoques = as.data.frame(table_occurrences)
+colnames(table_phoques) = paste0('clean_phoque_',  # Utiliser paste0 pour éviter un espace entre les éléments
+                                c('paisible', 
+                                  'invasive',
+                                  'concurrent',
+                                  'menacee',
+                                  'prédateur'))
+
+table_phoques = table_phoques %>%
+  mutate('ID' = seq(1, nrow(table_phoques)))
+
+```
+
+## Variables catégorielles nominales multiples : loisirs
+
+::: incremental 
+- Il y a beaucoup trop de réponses uniques (64)
+- Il faut revenir aux résultats du questionnaire, et traiter notamment les réponses collées (variables catégorielles multiples)
+- On refait du [one hot encoding]{.bg}
+
+
+:::
+
+
+::: fragment
+
+```{r, echo = T}
+
+# I. On doit cleaner les données pour bien pouvoir les isoler : on supprime ce qu'il se passe entre parenthèse pour pouvoir séparer les entités par l'usage de la virgule
+data_loc = data_ %>%
+  select(loisir)
+
+data_loc= data_loc %>%
+  mutate(loisir_easy = gsub("\\s*\\(.*?\\)", '', loisir))%>%
+  mutate(loisir_easy = gsub(" ", "", loisir_easy))%>%
+  mutate(loisir_easy = str_to_lower(loisir_easy))
+
+
+
+phrases_possibles = c("Pêche):", "Chasse", "Voile", "vélo", "natation",
+                      "Planceàvoile", "Paddle",  "Kayak/canoë", "Kitesurf", "Equitation", "Wingfoil",
+                      "Promenade", "Marche", "Naturaliste")
+phrases_possibles = str_to_lower(phrases_possibles)
+
+# II. On crée une table d'occurence vide
+table_occurrences <- matrix(0,
+                            nrow = nrow(data_), 
+                            ncol = length(phrases_possibles) +1, # On ajoute une case pour prendre en compte les cas "Autres"
+                            dimnames = list(seq(1:nrow(data_)),
+                                             c(phrases_possibles, "Autre"))) # Pour stocker un identifiant
+
+
+
+
+#III. Remplir le tableau avec les occurrences
+for (i in 1:nrow(data_)) {
+  phrases_ = 
+    unlist(# On enlève la structure de liste 
+    strsplit(as.character(data_loc[i, "loisir_easy"]), # qui résulte de la séparation de chaque réponse
+             ",") # autour de la virgule
+    ) 
+  for (phrase in phrases_) {
+    if (phrase %in% phrases_possibles) { # si elle est dite, 
+      table_occurrences[i, phrase] <- table_occurrences[i, phrase] + 1
+    }else{
+      table_occurrences[i, "Autre"] = table_occurrences[i, "Autre"] +1
+    }
+  }
+}
+
+
+table_loisir = as.data.frame(table_occurrences)
+colnames(table_loisir) = paste0("clean_",
+                                colnames(table_loisir))
+table_loisir = table_loisir %>%
+  mutate(ID = seq(1:nrow(table_loisir)))
+
+
+
+```
+
+:::
+
+
+
+## Synthèse et nettoyage final
+
+On merge tout et on sélectionne les données propres : 
+
+[Q8 : utilisez le pipe operator (%>%) pour sélectionner les colonnes de la full_data et récupérer les colonnes qui ont le nom `clean` avec `grepl`]{.bg}
+
+```{r, echo = T}
+
+full_data = left_join(data_, table_phoques, by = 'ID')
+full_data = left_join(full_data, table_occurrences_df, by = 'ID')
+full_data = left_join(full_data, table_loisir, by = "ID")
+
+
+
+
+```
+
+::: fragment
+
+```{r, echo=T}
+data_clean = full_data %>%
+  select(c('date', 'lieu', 'genre', 'classe_age',    # Les données déja propres
+           colnames(full_data)[full_data %>%         # Les colonnes que l'on a nommé clean
+                                 colnames() %>%      # car nettoyées!
+                                 grepl("clean", .)]
+           )
+         )
+
+```
+
+:::
+
+# Analyse de données
+
+## Analyses simples
+
+## Analyses bivariées
+
+## ANOVA
+
+## ACM
+
+# Cartographie
+
+
+
+

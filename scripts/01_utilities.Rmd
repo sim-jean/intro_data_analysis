@@ -1,0 +1,80 @@
+---
+title: "01_Utilities"
+author: "Simon Jean"
+date: "2025-01-29"
+output: html_document
+---
+
+## Set up de l'architecture
+
+Vous commencez par runner l'architecture : 
+
+```{r, echo=T}
+
+if(!("here" %in% installed.packages())){ # Vérifie si le package est déja installé
+  install.packages("here") # L'installe si besoin
+}
+
+library(here) # Charge la bibliothèque
+
+if(!dir.exists(here("scripts"))){ # Vérifie si le chemin existe déja
+  dir.create(here("scripts"))
+}
+
+print(paste(here("scripts"), " est créé"))
+
+
+```
+
+Puis : 
+
+
+```{r}
+if(!dir.exists(here("data"))){ # Vérifie si le chemin existe déja
+  dir.create(here("data"))
+  dir.create(here("data", "raw")) # Crée des dossiers à l'intérieur de \data
+  dir.create(here("data", "processed"))
+  dir.create(here("data", "external"))
+  
+  dir.create(here("results"))
+  dir.create(here("results", "figure"))
+  dir.create(here("results", "tables"))
+
+  dir.create(here("docs"))
+}
+
+print("Architecture à jour")
+
+```
+
+
+## Set up de l'environnement
+
+
+```{r}
+
+if(!("renv" %in% installed.packages())){
+  install.packages("renv")
+}
+
+library(renv)
+
+
+packages_to_install = c("rmarkdown", "knitr", "tidyverse", "readxl", "magrittr", "factoextra", "FactoMineR", "sf", "sp", "here")
+
+install_and_load <- function(packages) {
+  for (pkg in packages) { # Pour chaque package de la liste
+    if (!requireNamespace(pkg, quietly = TRUE)) { # Vérifie si le package est installé ou non et 
+      install.packages(pkg) # installe le cas échéant
+    }
+    library(pkg, character.only = TRUE) # Puis le charge
+  }
+}
+
+install_and_load(packages_to_install)
+
+renv::init(here())
+
+```
+
+

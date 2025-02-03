@@ -1,0 +1,45 @@
+---
+title: "02_Data Cleaning"
+author: "Simon Jean"
+date: "2025-01-29"
+output: html_document
+
+    
+---
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE) # pour éviter d'avoir le code dans l'output qui sort
+```
+
+
+
+## Chargement de l'environnement
+
+```{r}
+
+library(here)
+library(renv)
+
+if (file.exists("renv.lock")) {
+  renv::activate()
+}
+
+```
+
+
+## Chargement des données
+
+*Note* : pour ouvrir un "code chunk", vous pouvez taper `Ctrl + Alt + i`
+
+On charge les données : 
+
+```{r, echo = T}
+data_ = readxl::read_xlsx(here("data", "raw", "baie_somme_2025.xlsx"))
+
+head(data_)
+```
+
+
+
