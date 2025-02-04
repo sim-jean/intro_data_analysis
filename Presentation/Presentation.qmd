@@ -126,7 +126,7 @@ Le but est d'avoir une [architecture]{.bg} claire, pour que vos résultats puiss
 
 ::: incremental
 -   Pour commencer, vous allez aller sur la [page Github du cours](https://github.com/sim-jean/intro_data_analysis), pour télécharger les scripts qui vont nous permettre de créer l'architecture, et mener les analyses.
-    - Prenez simplement les fichiers en `.md`
+    - Prenez simplement les fichiers en `.md` et enregistrez les dans `scripts/`
     -   Téléchargez également le fichier `baie_somme_2025.xlsx`
 
 :::
@@ -323,6 +323,7 @@ renv::snapshot()
 
 - On va maintenant pouvoir charger les données
   - Enregistrez le fichier `baie_somme_2025.xlsx` dans `data\raw`
+  - Ouvrez `scripts/02_cleaning.Rmd`
   
 ::: fragment 
 
