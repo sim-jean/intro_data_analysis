@@ -14,17 +14,21 @@ knitr::opts_chunk$set(echo = FALSE) # pour éviter d'avoir le code dans l'output
 ```
 
 
-
 ## Chargement de l'environnement
 
 ```{r}
 
 library(renv)
 
-if (file.exists("renv.lock")) {
-  renv::activate()
-}
+#if (file.exists("renv.lock")) {
+#    renv::autoload()
+#}
 
+
+
+```
+
+```{r}
 library(here)
 library(magrittr)
 library(dplyr)
@@ -33,8 +37,8 @@ library(ggplot2)
 library(ggsci)
 library(purrr)
 library(openxlsx)
-
 ```
+
 
 
 ## Chargement des données
@@ -745,7 +749,7 @@ data_clean = full_data %>%
 
 colnames(data_clean) = gsub("clean_", "", colnames(data_clean))
 
-write.xls(data_clean, here("data", "processed", "data_cleaned.xlsx"))
+write.xlsx(data_clean, here("data", "processed", "data_cleaned.xlsx"))
 ```
 ## Documentation
 

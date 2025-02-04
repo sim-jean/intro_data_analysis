@@ -595,7 +595,16 @@ caractères (<code>stringdist</code>)</li>
 les coordonnées géographiques</li>
 </ul></li>
 </ul>
-<pre class="r"><code>remplacement = function(x_){
+<pre class="r"><code>remplacement_lieux = function(x_){
+#&#39; Standardisation des noms de lieux
+#&#39;
+#&#39; Cette fonction normalise les noms de lieux en les mettant en minuscules, 
+#&#39; en supprimant les accents et les articles, puis en les remplaçant par des 
+#&#39; noms standardisés selon une liste prédéfinie.
+#&#39;
+#&#39; @param x_ Une chaîne de caractères représentant un nom de lieu (potentiellement mal orthographié ou mal formaté).
+#&#39; @return Une chaîne de caractères avec le nom de lieu standardisé. Si aucun correspondance n&#39;est trouvée, la fonction retourne l&#39;entrée originale.
+
   x = str_to_lower(x_) # On met tout en minuscule
   x = x %&gt;%
     gsub(&quot;\\ble\\b&quot;, &quot;&quot;, .)%&gt;% # On enlève &quot;le&quot; à l&#39;aide d&#39;une expression régulière (regex)
@@ -613,10 +622,11 @@ les coordonnées géographiques</li>
     return(&#39;Berck-sur-mer&#39;)
   }else if(x %in% c(&#39;cayeux-sur-mer&#39;, &#39;cayeux&#39;, &quot;cayeux sur mer&quot;)){
     return(&#39;Cayeux-sur-mer&#39;)
+  }
+  
   # Q1 : A COMPLETER POUR SAINT VALERY JUSQU&#39;A CE QU&#39;UNE SEULE ENTREE FONCTIONNE
-  
-  
-  }else if(x %in% c(&#39;hourdel&#39;, &#39;pointe&#39;, &#39;pointe du hourdel&#39;)){
+
+  else if(x %in% c(&#39;hourdel&#39;, &#39;pointe&#39;, &#39;pointe du hourdel&#39;)){
     return(&quot;Pointe du Hourdel&quot;)
   }else if(x %in% c(&quot;feuquieres en vimeu&quot;,  &quot;feuquieres - en - vimeu&quot; )){
     return(&#39;Feuquières-en-Vimeu&#39;)
@@ -644,20 +654,24 @@ les coordonnées géographiques</li>
     return(&#39;Arras&#39;)
   }else if( x %in% c(&quot;dunkersue&quot;)){
     return(&#39;Dunkerque&#39;)
-  }else{
+  }
+  
+  else{
     return(x_)
   }
 }</code></pre>
 <pre class="r"><code>data_ = data_ %&gt;%
-  mutate(lieu_clean = sapply(lieu, remplacement)) # On applique la fonction remplacement à chaque lieu
+  mutate(clean_lieu = sapply(lieu, remplacement_lieux)) # On applique la fonction remplacement à chaque lieu
                                                   # et sapply renvoie un vecteur qui est assigné à 
                                                   # une nouvelle variable
-unique(data_$lieu_clean)</code></pre>
+unique(data_$clean_lieu)</code></pre>
 <pre><code>##  [1] &quot;Pointe du Hourdel&quot;      NA                       &quot;Saint Valéry sur Somme&quot;
 ##  [4] &quot;Le Crotoy&quot;              &quot;Amiens&quot;                 &quot;Le Tréport&quot;            
 ##  [7] &quot;Abbeville&quot;              &quot;L&#39;Oise&quot;                 &quot;Cayeux-sur-mer&quot;        
 ## [10] &quot;Berck-sur-mer&quot;</code></pre>
 <p>Enfin, on enregistre la nouvelle data</p>
+<p><strong>Q2 : enregistrez la nouvelle data avec dplyr, mutate et
+sapply</strong></p>
 </div>
 <div id="variable-catégorielle-ordonnée-lâge" class="section level2">
 <h2>Variable catégorielle ordonnée : l’âge</h2>
@@ -665,6 +679,8 @@ unique(data_$lieu_clean)</code></pre>
 <code>factor</code> permet d’avoir des variables catégorielles
 ordonnées, que l’on peut représenter sur un axe ordonné en précisant les
 niveaux (<code>levels</code>)</p>
+<p><strong>Q3 : transformez l’age en variable catégorielle
+ordonnée</strong></p>
 <pre class="r"><code># Q3 : transformez l&#39;age en variable catégorielle ordonnée
 # Utilisez ?levels si besoin$</code></pre>
 <pre><code>## Warning in grid.Call(C_stringMetric, as.graphicsAnnot(x$label)): famille de
@@ -688,13 +704,31 @@ niveaux (<code>levels</code>)</p>
 <code>int</code></li>
 <li>On va utiliser la population totale</li>
 </ul>
-<pre class="r"><code>remplacement_1 = function(x_){
-  x = str_to_lower(x_)
-  return(grepl(&quot;non&quot;, x))
+<p><strong>Q4 : Tabulez la population</strong></p>
+<pre class="r"><code>remplacement_phoques_1 = function(x_){
+#&#39; Cette fonction donne une indication sur la connaissance (oui ou non) de la population de phoque
+#&#39; @param x_ une chaine de caractères
+
+  
+  return(grepl(&quot;non&quot;, str_to_lower(x_)))
 }
 
 
-remplacement = function(x_, option = &quot;max&quot;){
+remplacement_phoques_population = function(x_, option = &quot;max&quot;){
+  
+#&#39; Extraction et classification des nombres liés aux populations de phoques
+#&#39;
+#&#39; Cette fonction analyse une chaîne de caractères pour extraire des nombres 
+#&#39; (représentant des populations de phoques) et les classifier en différentes catégories 
+#&#39; (`Beaucoup`, `Centaines`, `Milliers`, `Quelques uns`, etc.).
+#&#39;
+#&#39; @param x_ Une chaîne de caractères contenant une estimation de population (peut inclure des chiffres, des mots ou des expressions variées).
+#&#39; @param option Une option définissant si l&#39;on souhaite récupérer la valeur minimale ou maximale 
+#&#39; dans le cas de plages numériques (`&quot;min&quot;` ou `&quot;max&quot;`). Par défaut `&quot;max&quot;`.
+#&#39; @return Une valeur numérique si un chiffre est détecté, ou une catégorie (`&quot;Beaucoup&quot;`, `&quot;Centaines&quot;`, `&quot;Milliers&quot;`, `&quot;Quelques uns&quot;`, `&quot;Non&quot;`, etc.).
+
+    
+
   # Approche par regex : 
   potential_number = x_ %&gt;%
     gsub(&quot; &quot;, &quot;&quot;, .)%&gt;%
@@ -756,8 +790,8 @@ remplacement = function(x_, option = &quot;max&quot;){
 #}
 
 data_ = data_ %&gt;%
-  mutate(pop_clean_yes_no = sapply(q2_pop_phoques, remplacement_1),
-         pop_clean_max = sapply(q2_pop_phoques, remplacement))</code></pre>
+  mutate(clean_pop_yes_no = sapply(q2_pop_phoques, remplacement_phoques_1),
+         clean_pop_max = sapply(q2_pop_phoques, remplacement_phoques_population))</code></pre>
 </div>
 <div id="variables-catégorielles-ordinales-professions" class="section level2">
 <h2>Variables catégorielles ordinales : professions</h2>
@@ -810,36 +844,35 @@ data_ = data_ %&gt;%
 ##       
 ##        Travail avec des enfants handicapés Usine
 ##   [1,]                                   1     2</code></pre>
-<div class="fragment">
 <p>On a encore des problèmes d’encodage : je vous laisse y penser</p>
-</div>
-<div class="incremental">
-<ul class="incremental">
+<ul>
 <li>Trouvez les dénominations en CSP les plus pertinentes</li>
 <li>Regroupez les personnes dans la bonne CSP en :
-<ul class="incremental">
+<ul>
 <li>Modifiant la fonction <code>remplacement()</code></li>
 <li>Et en attribuant les CSP à une nouvelle variable</li>
 </ul></li>
 </ul>
-</div>
-<hr />
 <p>On peut utiliser deux variables :</p>
 <ul>
 <li>Une variable de “haut” niveau de classification</li>
 <li>Une de “bas” niveau : plus de détails</li>
 </ul>
-<div class="fragment">
 <p>On peut utiliser un prétraitement des données et la fonction
 <code>startsWith(x, prefix)</code> pour rassembler tout ce qui
 commencerait par la même racine</p>
-</div>
-<hr />
+<p><strong>Q5 : Utilisez <code>startsWith()</code> pour compléter la
+fonction suivante et rédigez la documentation</strong></p>
 <pre class="r"><code>csp_questionnaire = c(&quot;Entreprise/tourisme&quot;, &quot;Restauration/hôtellerie&quot; , &quot;Agriculteur (à préciser)&quot;, &quot;Pêcheur (préciser)&quot;,&quot;Commerçant (préciser)&quot;, &quot;Agent public&quot;,
                       &quot;Cadre supérieur&quot;, &quot;Employé&quot;, &quot;Ouvrier&quot;)
 
 
-remplacement_questionnaire = function(x_){
+remplacement_professions = function(x_){
+  
+#&#39; Classification des professions à partir d&#39;un questionnaire
+#&#39;
+
+
   x = x_%&gt;%
     str_to_lower()%&gt;%
     gsub(&quot;é&quot;, &quot;e&quot;, .)%&gt;%
@@ -852,11 +885,10 @@ remplacement_questionnaire = function(x_){
                                               &quot;famille d&#39;accueil&quot;, &quot;tabac&quot;, &quot;medical&quot;,
                                               &quot;recruteur de donateurs pour association&quot;)){
     return(&quot;Employé.e&quot;)
-    
-    # Q5 : utilisez startsWith pour trouver les étudiants, collegiens etc
-  }else if( x %in% c(&#39;sans&#39;, &#39;rien&#39;, 
-                                                                                                   &#39;sans emploi&#39;, &#39;chômeur&#39;,
-                                                                                                   &#39;chômage&#39;, &#39;non&#39;, &quot;femme au foyer&quot;)){
+  }else if(x %in% c(&#39;sans&#39;, &#39;rien&#39;, &#39;sans emploi&#39;, &#39;chômeur&#39;,&#39;chômage&#39;, &#39;non&#39;, &quot;femme au foyer&quot;)){ 
+  
+  # COMPLETER L&#39;EXPRESSION
+  
     return(&#39;Sans activité professionelle (hors retraite)&#39;)
   }else if(startsWith(x, &#39;retrait&#39;)){
     return(&#39;Retraité.e&#39;) 
@@ -883,7 +915,7 @@ remplacement_questionnaire = function(x_){
 <h2>Variables catégorielles non ordonnées (nominales) : nom des
 phoques</h2>
 <p>Ici, on va adopter la même approche par fonction de
-<code>remplacement()</code></p>
+<code>remplacement_()</code></p>
 <pre class="r"><code>table(data_$q1_nom_phoques)</code></pre>
 <pre><code>## 
 ##                                 Gris                   Gris et veau marin 
@@ -970,8 +1002,6 @@ que l’on:
 imposer d’ordre</li>
 </ul></li>
 </ul>
-<p>:::</p>
-<div class="fragment">
 <pre class="r"><code>data_ = data_ %&gt;%
   mutate(ID = seq(1:nrow(data_))) # On donne un identifiant à chaque individu statistique
 
@@ -994,7 +1024,6 @@ for (i in 1:nrow(data_)) {
     }
   }
 }</code></pre>
-</div>
 </div>
 <div id="variables-catégorielles-nominales-multiples-questions-sur-les-phoques" class="section level2">
 <h2>Variables catégorielles nominales multiples : questions sur les
@@ -1045,15 +1074,15 @@ for (i in 1:nrow(data_)) {
 </div>
 <div id="variables-catégorielles-nominales-multiples-loisirs" class="section level2">
 <h2>Variables catégorielles nominales multiples : loisirs</h2>
-<div class="incremental">
-<ul class="incremental">
+<ul>
 <li>Il y a beaucoup trop de réponses uniques (64)</li>
 <li>Il faut revenir aux résultats du questionnaire, et traiter notamment
 les réponses collées (variables catégorielles multiples)</li>
 <li>On refait du one hot encoding</li>
 </ul>
-</div>
-<div class="fragment">
+<p><strong>Q7 : Convertir la matrice en dataframe pour une meilleure
+lisibilité et changez les noms des colonnes avec
+<code>clean</code></strong></p>
 <pre class="r"><code># I. On doit cleaner les données pour bien pouvoir les isoler : on supprime ce qu&#39;il se passe entre parenthèse pour pouvoir séparer les entités par l&#39;usage de la virgule
 data_loc = data_ %&gt;%
   select(loisir)
@@ -1099,7 +1128,6 @@ for (i in 1:nrow(data_)) {
 
 # Q7 : Convertir la matrice en dataframe pour une meilleure lisibilité</code></pre>
 </div>
-</div>
 <div id="synthèse-et-nettoyage-final" class="section level2">
 <h2>Synthèse et nettoyage final</h2>
 <p>On merge tout et on sélectionne les données propres</p>
@@ -1116,7 +1144,25 @@ data_clean = full_data %&gt;%
              #ICI
              ]
            )
-         )</code></pre>
+         )
+
+colnames(data_clean) = gsub(&quot;clean_&quot;, &quot;&quot;, colnames(data_clean))
+
+write.xlsx(data_clean, here(&quot;data&quot;, &quot;processed&quot;, &quot;data_cleaned.xlsx&quot;))</code></pre>
+</div>
+<div id="documentation" class="section level2">
+<h2>Documentation</h2>
+<ul>
+<li>Créez un fichier <code>.txt</code> ou <code>.md</code> qui détaille
+les données <em>brutes</em> et enregistrez le dans
+<code>/docs/README_rawdata.txt</code></li>
+<li>Créez un fichier <code>.txt</code> ou <code>md</code> qui détaille
+les transformations appliquées aux données et les fonctions utilisées,
+et enregistrez le dans <code>/docs/REAME_datacleaning.txt</code></li>
+<li>Updates le script <code>fonctions.R</code> avec les fonctions que
+l’on a utilisées : elles ne sont pas encore très modulaires ou beaucoup
+réutilisables, mais c’est un premier pas.</li>
+</ul>
 </div>
 
 
