@@ -407,8 +407,8 @@ library(renv)</code></pre>
 <pre><code>## Les objets suivants sont masqués depuis &#39;package:base&#39;:
 ## 
 ##     autoload, load, remove</code></pre>
-<pre class="r"><code>packages_to_install = c(&quot;rmarkdown&quot;, &quot;knitr&quot;, &quot;tidyverse&quot;, &quot;readxl&quot;, &quot;magrittr&quot;, &quot;stringr&quot;, &quot;stringdist&quot;, 
-                        &quot;factoextra&quot;, &quot;FactoMineR&quot;, &quot;sf&quot;, &quot;sp&quot;, &quot;here&quot;)
+<pre class="r"><code>packages_to_install = c(&quot;rmarkdown&quot;, &quot;knitr&quot;, &quot;tidyverse&quot;, &quot;readxl&quot;, &quot;magrittr&quot;, &quot;stringr&quot;, &quot;stringdist&quot;, &#39;reshape2&#39;,
+                        &quot;factoextra&quot;, &quot;FactoMineR&quot;, &quot;sf&quot;, &quot;sp&quot;, &quot;here&quot;, &quot;openxlsx&quot;, &#39;RColorBrewer&#39;)
 
 install_and_load &lt;- function(packages) {
   for (pkg in packages) { # Pour chaque package de la liste
@@ -462,6 +462,15 @@ install_and_load(packages_to_install)</code></pre>
 ## L&#39;objet suivant est masqué depuis &#39;package:tidyr&#39;:
 ## 
 ##     extract
+## 
+## 
+## 
+## Attachement du package : &#39;reshape2&#39;
+## 
+## 
+## L&#39;objet suivant est masqué depuis &#39;package:tidyr&#39;:
+## 
+##     smiths
 ## 
 ## 
 ## Welcome! Want to learn more? See two factoextra-related books at https://goo.gl/ve3WBa

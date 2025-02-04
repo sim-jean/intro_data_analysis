@@ -60,8 +60,8 @@ if(!("renv" %in% installed.packages())){
 library(renv)
 
 
-packages_to_install = c("rmarkdown", "knitr", "tidyverse", "readxl", "magrittr", "stringr", "stringdist", 
-                        "factoextra", "FactoMineR", "sf", "sp", "here")
+packages_to_install = c("rmarkdown", "knitr", "tidyverse", "readxl", "magrittr", "stringr", "stringdist", 'reshape2',
+                        "factoextra", "FactoMineR", "sf", "sp", "here", "openxlsx", 'RColorBrewer')
 
 install_and_load <- function(packages) {
   for (pkg in packages) { # Pour chaque package de la liste

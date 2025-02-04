@@ -1,0 +1,602 @@
+---
+title: "03_Analysis"
+date: "2025-02-04"
+output: html_document
+---
+
+# Analyse de données
+
+## Quelles analyses mener? 
+
+1. Etude des valeurs manquantes
+2. Etude des distributions des variables clés
+3. Analyse de corrélation entre variables
+4. Analyse multivariées
+
+
+```{r}
+# Nettoyer l'espace
+rm(list = ls()) # Enlève tout ce qu'il y a dans l'environnement
+
+library(dplyr)
+library(tidyr)
+library(magrittr)
+library(factoextra)
+library(FactoMineR)
+library(reshape2)
+library(readxl)
+library(openxlsx)
+library(here)
+
+
+renv::snapshot()
+
+data_ = read.xlsx(here('data', 'processed', 'data_cleaned.xlsx'))
+
+data_$classe_age = factor(data_$classe_age, 
+                          levels = c("<20 ans","20-35 ans","35-50 ans",
+                                     "50-65 ans", ">65 ans"))
+
+to_factor_vect =  c(colnames(data_)[c(startsWith(colnames(data_), 'phoque_'))],
+                    colnames(data_)[c(startsWith(colnames(data_), 'q_'))],
+                    c("pêche):", "chasse","voile","vélo","natation", "planceàvoile" ,"paddle","kayak/canoë",
+                      "kitesurf","equitation","wingfoil","promenade","marche","naturaliste","Autre" ))
+to_factor_vect=to_factor_vect[to_factor_vect != 'nom_phoques']
+
+data_ = data_ %>%
+  mutate(across(all_of(to_factor_vect), as.factor))
+```
+
+
+## Analyses simples
+
+
+
+Pour cela, on va utiliser la bibliothèque `ggplot2` (Grammar of Graphics) qui prend les éléments suivants : 
+
+
+- Les données (`data`)
+- Les "aesthetics" (`aes()`) : comment représenter les variables, qui est en abscisse (`x=`), en ordonnée (`y=`), en couleur (`color=`)
+- La géométrie (`geom()`): le type de graphique
+- Une variété d'éléments de style : 
+  - `scale_color_`, `scale_fill` pour les couleurs
+  - `theme()` pour les axes, polices, tailles, couleur de fond
+- On peut également représenter sur différents panels avec les fonctions `facet_`
+- Marche au mieux lorsque les données sont sous le format `tidy`: une variable par colonne, une observation par ligne
+  - On utilise parfois `pivot_longer()` pour transformer des données "larges" en "longues", pour tout représenter d'un coup
+
+
+
+## Les variables démographiques
+
+
+### Code
+
+```{r, echo = T}
+custom_theme = function(){
+  theme_minimal() +  # Base theme
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),  # Rotate x-axis labels by 45 degrees
+    legend.position = "bottom"
+  )
+}
+
+p = data_ %>%
+  select(c('genre', 'classe_age','date', 'professions', 'lieu')) %>%
+  pivot_longer( - date, 
+               values_to = 'values',
+               names_to = 'names')%>%
+    ggplot(aes(x=values))+
+    geom_histogram(stat="count")+
+    facet_grid(~names,  scales = "free")+
+  custom_theme()
+  
+```
+
+### Graph 
+
+```{r}
+p
+```
+
+
+
+**Q1 : Ecrivez le code pour plotter la variable `classe_age` avec `ggplot`**
+
+
+### Code et indices
+
+Indices : 
+
+- les datas sont elles `tidy` avec une seule variable? 
+- Pensez à utiliser la caractéristique `stat = count`
+
+
+
+```{r, echo = T}
+
+
+p = data_ %>%
+  ggplot(aes(x = classe_age))+
+  geom_bar(stat= 'count')
+
+
+```
+
+
+### Plot
+```{r}
+p
+```
+
+
+
+
+
+Ce n'est pas très joli, ni modulaire : on va écrire une fonction
+
+
+
+### Code
+
+```{r}
+
+library(RColorBrewer)
+
+plot_distribution = function(variable, data = data_){
+  
+  if(!is.numeric(data[[variable]])){ # Check if binary or character
+    stat_ = 'count'
+  }else{
+    stat_ = "bin"
+  }
+  data %>%
+    ggplot(aes(x = get(variable), fill = get(variable)))+
+    geom_histogram(stat = stat_)+
+    xlab(variable)+
+    labs(fill = ' ')+
+    custom_theme()+
+    scale_fill_brewer(palette = "Paired")
+}
+
+```
+
+### Age
+
+```{r, echo = T}
+
+plot_distribution("classe_age")
+
+```
+
+
+### Professions
+
+```{r, echo = T}
+
+plot_distribution("professions")
+
+```
+
+
+### Lieux
+
+```{r, echo = T}
+
+plot_distribution("lieu")
+
+```
+
+
+## Population de phoques : noms
+
+```{r, echo = T}
+
+plot_distribution("noms_phoques")
+
+```
+
+## Population de phoques
+
+```{r, echo = T}
+
+plot_distribution("pop_phoque_chiffre")
+
+```
+
+
+
+
+### Phoques paisibles
+
+```{r, echo = T}
+
+plot_distribution("phoque_paisible")
+
+```
+
+### Invasifs et nuisibles
+
+```{r, echo = T}
+
+plot_distribution("phoque_invasive")
+
+```
+
+### Concurrents
+
+```{r, echo = T}
+
+plot_distribution("phoque_concurrent")
+
+```
+
+### Menacés
+
+```{r, echo = T}
+
+plot_distribution("phoque_menacee")
+
+```
+
+### Prédateurs
+
+```{r, echo = T}
+
+plot_distribution("phoque_prédateur")
+
+```
+
+
+
+## Analyse bivariée
+
+On cherche la répartition de notre échantillon entre classes d'âge et différente caractéristiques : 
+
+
+### Code
+
+```{r, echo = T}
+
+p = data_ %>%
+ggplot(aes(x = classe_age, fill = professions)) +
+  geom_bar(position = "fill") +  # Normalized proportions
+  theme_minimal()+
+  scale_fill_brewer(palette = "Paired")
+
+```
+### Graphique
+
+```{r}
+p
+```
+
+
+
+## Analyse bivariée : phoques paisible et nature sauvage
+
+**Q2 : plottez la correlation entre `phoque_paisible` et `q_nature_libre`**
+
+
+```{r, echo = T}
+data_ %>%
+  ggplot(aes(x = phoque_paisible, fill = q_nature_libre)) +
+  geom_bar(position = "fill") +  # Normalized proportions
+  theme_minimal()+
+  scale_fill_brewer(palette = "Paired")
+```
+
+
+
+## Analyse bivariée : phoques paisible et connaissance des phoques
+
+**Q3 : plottez la correlation entre `phoque_paisible` et `pop_yes_no`**
+
+
+```{r, echo = T}
+data_ %>%
+  ggplot(aes(x = phoque_paisible, fill = pop_yes_no)) +
+  geom_bar(position = "fill") +  # Normalized proportions
+  theme_minimal()+
+  scale_fill_brewer(palette = "Paired")
+```
+
+
+## Analyses multivariées : global
+
+
+### Code
+
+```{r, echo=T}
+
+correlation_matrix = cor(data_ %>%
+                           select(to_factor_vect)%>%
+                           select(- c('wingfoil'))%>%
+                           mutate(across(everything(), as.numeric)), 
+                         method = 'pearson')
+
+
+# On efface la diagonale (corrélation de 1) et on garde seulement un triangle pour éviter la redondance
+diag(correlation_matrix) = NA 
+
+# Convert matrix to long format for ggplot
+cor_long = reshape2::melt(correlation_matrix)
+
+p = ggplot(cor_long, aes(Var1, Var2, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0) +
+  labs(title = "Correlation Heatmap of One-Hot Encoded Variables",
+       x = " ",
+       y = " ",
+       fill = "Correlation") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+### Heatmap de toutes les variables
+
+```{r}
+p
+```
+
+
+
+## Analyse multivariée : restreinte
+
+
+### Code
+
+On va essayer de restreindre un peu l'analyse : 
+Q4 : prenez un sous ensemble de variables, comme les caractéristiques des phoques et les réponses aux questions et faites une heatmap]{.bg}
+
+
+```{r, echo = T}
+correlation_matrix = cor(data_ %>%
+                           select(colnames(data_)[startsWith(colnames(data_), "q_")])%>%
+                           mutate(across(everything(), as.numeric)), 
+                         method = 'pearson')
+
+diag(correlation_matrix) = NA 
+
+# Convert matrix to long format for ggplot
+cor_long = reshape2::melt(correlation_matrix)
+
+
+
+```
+
+
+
+### Graph
+
+```{r}
+ggplot(cor_long, aes(Var1, Var2, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0) +
+  labs(title = "Correlation Heatmap of One-Hot Encoded Variables",
+       x = "Variable",
+       y = "Variable",
+       fill = "Correlation") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+
+# Analyse par correspondance multiple 
+
+Technique d'analyse multivariées pour identifier la structure d'un espace de grande dimension
+
+
+## Origine et développement {#sec-ACM}
+
+- Jean-Paul Benzécri (années 1960) :
+    - Pionnier de l’analyse des correspondances, il développe l’Analyse des Correspondances Simples (ACS) pour représenter graphiquement la structure des tableaux de contingence.
+    - Nécessité de visualiser les relations entre catégories dans des enquêtes sociales, marketing, etc.
+    - Extension vers l’Analyse des Correspondances Multiples (ACM) 
+    - Adaptation de l’ACS pour traiter simultanément plusieurs variables qualitatives, en combinant plusieurs tableaux de contingence dans une matrice globale.
+
+- Harold Hotelling ]{.bg} (années 1930-1940) :
+    - Pionnier de l’Analyse en Composantes Principales (ACP), il formalise la réduction de dimensionnalité pour des variables quantitatives.
+    - Introduit l’idée de décomposition en valeurs propres, qui vise à extraire des axes expliquant la plus grande part de la variance.
+
+- Théorie de l'information et géométrie
+    -  L’inertie (ou dispersion) dans les données est mesurée de manière similaire à la variance en ACP, ce qui permet de comparer et de représenter les structures des données.
+
+
+
+
+
+## Intuition mathématique – De la géométrie à la décomposition
+
+- Principe de base : représentation géométrique]{.bg}
+    - Chaque individu est représenté par un point dans un espace de dimension élevée, chaque axe correspondant à une modalité (catégorie).
+    - Objectif : trouver un espace de dimension réduite qui capture l’essentiel des relations entre modalités et individus
+
+- Mesure de la dispersion : l’inertie]{.bg}
+    - Inertie totale : analogue à la variance en ACP, elle mesure la dispersion totale des points par rapport au centre.
+    - Chaque modalité contribue à cette inertie selon sa fréquence et son écart par rapport à l’attendu en cas d’indépendance.
+
+- Décomposition en valeurs singulières (SVD)  ]{.bg}
+    - Inspirée par l’ACP de Hotelling, la SVD permet de décomposer la matrice normalisée en axes factoriels orthogonaux.
+    - La SVD « fait pivoter » l’espace initial  pour révéler les directions (axes) où la dispersion (l’information) est maximale.
+    - Les axes sélectionnés expliquent successivement des parts décroissantes de l’inertie totale.
+
+
+
+
+## Fonctionnement pas à pas – De la donnée brute à l’interprétation 
+
+
+- Préparation des données : construction d’un tableau binaire :]{.bg}
+    - Chaque individu est décrit par des réponses qualitatives, transformées en indicateurs (1 ou 0) pour chaque modalité.
+- Normalisation et calcul des distances]{.bg}
+    - Utilisation de la distance du khi-deux, adaptée aux données qualitatives, pour mesurer la similitude entre profils.
+    - Pondération des modalités selon leur fréquence pour équilibrer leur influence.
+- Décomposition via SVD]{.bg}
+    - La matrice normalisée est décomposée en composantes grâce à la SVD, qui découle directement des idées de réduction de dimensionnalité portées par l’ACP de Hotelling.
+    - Chaque axe factoriel est associé à une valeur propre qui quantifie la part d’inertie expliquée.
+
+- Projection et interprétation]{.bg}
+    - Projection simultanée des individus et des modalités sur les axes factoriels.
+    - Les points proches indiquent des profils similaires.
+    - Les axes traduisent des tendances ou oppositions sous-jacentes (ex. profils traditionnels vs. profils modernes).
+
+
+
+## Idée générale
+
+
+
+- On minimise la distance du khi-deux intra-classe : les modalités proches doivent rester proches]{.bg}
+- On maximise la dispersion entre groupes distincts: les modalités et individus différents doivent être bien séparés sur les axes factoriels.
+
+
+
+## Mise en pratique
+
+- Il faut préparer les données: on ne va pas tout garder
+- Par ailleurs, la structure de nos questions n'est pas parfaite pour utiliser l'ACM :
+  - Fait pour quand plusieurs niveaux d'une même question sont mutuellement exclusifs
+  - Nous, on a autorisé 2 ou 5 réponses par question(s)
+  - On n'a pas exactement la même structure, donc la distance du khi-deux risque d'être un peu modifiée
+  - On pourrait modifier les réponses et les pondérer par le nombre de réponses
+- Malgré ces problèmes, on va illustrer la méthode : on réfléchira ensuite à la meilleure manière
+- Pour cela on utilise les bibliothèques `FactoMineR` et `factoextra`
+
+
+```{r, echo = T}
+library(FactoMineR)
+library(factoextra)
+
+# I. Préparer les données : il faut que des facteurs
+
+data_for_analysis = data_%>%
+  select(c(to_factor_vect, 'genre', 'classe_age', 'pop_yes_no', 'professions', 'noms_phoques'))%>%
+   mutate(across(everything(), as.factor))%>%
+  drop_na()
+  
+```
+
+
+## Réaliser l'ACM
+
+- La fonction `MCA()` va :
+  - Construire le tableau disjonctif complet.
+    - Calculer la distance du khi-deux pour chaque individu et modalité.
+    - Réaliser la décomposition en valeurs singulières qui, de manière implicite, minimise la somme des distances (c'est-à-dire l'inertie non expliquée).
+- On enlève les modalités les plus corrélées
+    
+```{r}
+cor_threshold <- 0.5
+cor_pairs <- which(abs(correlation_matrix) > cor_threshold, arr.ind = TRUE)
+
+# Remove the diagonal (where row and column are the same)
+cor_pairs <- cor_pairs[cor_pairs[, 1] != cor_pairs[, 2], ]
+
+# Get the variable names for the pairs
+pair_names <- apply(cor_pairs, 1, function(x) paste(rownames(correlation_matrix)[x[1]], "-", colnames(correlation_matrix)[x[2]]))
+
+# Print the pairs
+print(pair_names)
+```
+    
+    
+```{r, echo = T}
+
+res.mca <- MCA(data_for_analysis%>%
+                 select(-c('classe_age', 'pop_yes_no', 'professions', 'noms_phoques', 
+                           'q_trop_veau', 'q_pas_plus_phoques')), 
+               graph = FALSE)
+
+```
+
+
+## Visualiser les résultats 
+
+
+On va visualiser le scree plot qui montre la part de variance expliquée par chaque axe factoriel
+
+
+
+```{r, echo = T}
+fviz_screeplot(res.mca, addlabels = TRUE, ylim = c(0, 50),
+               title = "Inertie expliquée par les axes")
+```
+
+## Visualisation des individus et des modalités 
+
+```{r}
+fviz_mca_biplot(res.mca, 
+                repel = TRUE, 
+                title = "Biplot ACM : individus et modalités")
+```
+
+## Visualisation des modalités
+
+```{r}
+fviz_mca_var(res.mca, 
+             repel = TRUE,           # Évite les chevauchements de textes
+             title = "Représentation des modalités structurantes")
+```
+## Visualisation des modalités restreintes
+
+```{r}
+fviz_mca_var(res.mca, 
+             repel = TRUE, 
+             select = list(contrib = 20),  # Affiche les 20 modalités les plus contributives
+             title = "Modalités les plus contributives")
+```
+
+## Visualisation des modalités restreintes
+
+```{r}
+fviz_mca_var(res.mca, col.var = "contrib",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), 
+             select = list(contrib = 20),  # Affiche les 20 modalités les plus contributives
+             repel = TRUE, # avoid text overlapping (slow)
+             ggtheme = theme_minimal(), title= " ",
+) 
+```
+
+# Visualisation des individus
+
+```{r}
+
+fviz_mca_ind(res.mca,
+             label = "none", # masquer le texte des individus
+             ggtheme = theme_minimal (), 
+             title=" ")
+
+```
+
+## Visualisation des individus avec classes d'age
+
+
+```{r, echo = T}
+
+palette_5 <- c("#E41A1C", "#377EB8", "#4DAF4A", "#FF7F00", "#984EA3")
+
+
+fviz_mca_ind(res.mca,
+             label = "none", # masquer le texte des individus
+             ggtheme = theme_minimal (), 
+             palette = palette_5,
+             habillage = data_for_analysis$classe_age,
+             title=" ")
+
+```
+
+```{r}
+
+palette_11 <- c("#E41A1C", "#377EB8", "#4DAF4A", "#FF7F00", "#984EA3", 
+                "#FF00FF", "#A6CEE3", "#1F77B4", "#B2DF8A", "#FB9A99", "forestgreen", "navyblue")
+
+fviz_mca_ind(res.mca,
+             label = "none", # masquer le texte des individus
+             ggtheme = theme_minimal (), 
+             palette = palette_11,
+             habillage = data_for_analysis$profession,
+             title=" ")
+
+```
+

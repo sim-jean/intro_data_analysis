@@ -26,7 +26,7 @@ format:
 editor: visual
 ---
 
-## Introduction
+# Introduction
 
 ::: incremental
 -   Le but de cette séance est de vous familiariser avec quelques outils modernes que les économistes *doivent* maîtriser : pour celles et ceux qui auraient besoin d'un rafraichissement sur les structures de données de base (vecteurs, matrices, dataframes) voir le [cours de Laurent Rouvière](https://lrouviere.github.io/TUTO_R/objetsR.html)
@@ -48,9 +48,8 @@ editor: visual
 -   Utilise des [packages]{.bg} c'est à dire des collections de fonctions qui permettent de faire une grande variété de choses
 -   Pour s'en servir: on installe R, puis un [Integrated Development Environment (IDE)]{.bg} comme RStudio par exemple
     -   Pour ceux qui ne l'auraient pas : [installer R et RStudio](https://posit.co/download/rstudio-desktop/)
-:::
 
-# Introduction et installation
+:::
 
 ## Projets sur R
 
@@ -65,6 +64,51 @@ editor: visual
     -   Ouvrez `R Studio`, et cliquez sur `File > New Project`
     -   Puis `New Directory > New Project` puis nommez le `analyse_economie_ecologique` ou ce que vous préférez comme titre de projet
     -   Vous avez créé un projet!
+:::
+
+## Reproducibilité
+
+::: incremental
+- On parle de [reproducibilité]{.bg} à plusieurs niveaux dans l'analyse scientifique : 
+  - Reproducibilité [computationelle]{.bg2} : pouvoir répliquer exactement les résultats
+  - Reproducibilité [empirique]{.bg2} : refaire les tests d'une autre manière
+  - Reproducibilité [conceptuelle]{.bg2} : retrouver les mêmes résultats avec de nouvelles données
+- Celle ci est en [crise]{.bg} : beaucoup de résultats en science ne sont pas réplicables
+- Pas simplement la recherche académique, toute production visant à être étayée et partagée doit viser la reproducibilité
+
+:::
+
+## Comment rendre la recherche reproductible? 
+
+::: incremental
+
+1. Une [architecture]{.bg} claire et organisée par [projets]{.bg}: 
+    - Des fichiers séparés pour les données brutes, traitées et les scripts
+2.  [Contrôle de version]{.bg} : on ne verra pas ça ensemble
+3.  Management des [dépendances]{.bg} : 
+    - Créer des environnements pour vérouiller les bibliothèques
+    - Documenter toutes les dépendances
+    - Partager les fichiers `.lock` avec les collaborateurs
+4.  [Pipeline]{.bg} de données : 
+    - Ne jamais modifier les fichiers de données brutes
+    - Créer des scripts séparés pour le nettoyage et l'analyse
+    - Construire des fonctions modulaires et réutilisables - c'est un art
+    - Documenter la transformation des données
+
+:::
+
+----------
+
+::: incremental 
+
+5.  [Documentation]{.bg} : 
+    - Maintenez des `README` clairs et exhaustifs
+    - Commentez le code
+    - Générez des rapports automatisés avec les fichiers `markdown`
+6.  [Automatisation]{.bg} :
+    - Utilisez des chemins relatifs : le package `here()`
+    - Créez des rapports reproductibles
+  
 :::
 
 ## Architecture
@@ -156,6 +200,7 @@ Projet/
 ├── data/                # Contient les fichiers de données brutes et traitées
 │   ├── raw/             # Données brutes
 │   │   └── data1.csv    # Exemple de fichier de données brutes
+│   │   └── README.txt   # Texte explicatif des données
 │   ├── processed/       # Données nettoyées et traitées
 │   │   └── data_clean.csv
 │   └── external/        # Données externes ou partagées (ex. bases de données publiques)
@@ -252,7 +297,7 @@ if(!dir.exists(here("renv"))){ # si l'environnement n'existe pas  déja (ce qui 
 # III. Installer chaque package
 
 
-packages_to_install = c("rmarkdown", "knitr", "tidyverse", "readxl", 
+packages_to_install = c("rmarkdown", "knitr", "tidyverse", "readxl", "openxlsx",
                         "magrittr", "factoextra", "FactoMineR", "sf", "sp", "here", "ggsci")
 
 install_and_load <- function(packages){
@@ -309,6 +354,7 @@ str(data_$`Q6 :  Pouvez-vous me dire si vous êtes d’accord avec les affirmati
 colnames(data_)
 
 ```
+
 ---------
 
 ::: incremental
@@ -333,14 +379,9 @@ colnames(data_) = c("date", "lieu", "jour", "heure", "genre",
                     "q4_dérangement", "q5_classe_phoque", "q6_avis", "q7_divers")
 ```
 
-
 :::
 
-
-
-
-
-## Lieux 
+## Nettoyer les lieux 
 
 ```{r, echo = T}
 unique(data_$residence)
@@ -371,7 +412,16 @@ unique(data_$lieu)
 
 ```{r, echo = T}
 
-remplacement = function(x_){
+remplacement_lieux = function(x_){
+#' Standardisation des noms de lieux
+#'
+#' Cette fonction normalise les noms de lieux en les mettant en minuscules, 
+#' en supprimant les accents et les articles, puis en les remplaçant par des 
+#' noms standardisés selon une liste prédéfinie.
+#'
+#' @param x_ Une chaîne de caractères représentant un nom de lieu (potentiellement mal orthographié ou mal formaté).
+#' @return Une chaîne de caractères avec le nom de lieu standardisé. Si aucun correspondance n'est trouvée, la fonction retourne l'entrée originale.
+
   x = str_to_lower(x_) # On met tout en minuscule
   x = x %>%
     gsub("\\ble\\b", "", .)%>% # On enlève "le" à l'aide d'une expression régulière (regex)
@@ -437,10 +487,10 @@ remplacement = function(x_){
 ```{r, echo =T}
 
 data_ = data_ %>%
-  mutate(lieu_clean = sapply(lieu, remplacement)) # On applique la fonction remplacement à chaque lieu
+  mutate(clean_lieu = sapply(lieu, remplacement_lieux)) # On applique la fonction remplacement à chaque lieu
                                                   # et sapply renvoie un vecteur qui est assigné à 
                                                   # une nouvelle variable
-unique(data_$lieu_clean)
+unique(data_$clean_lieux)
 
 ```
 
@@ -456,9 +506,9 @@ unique(data_$lieu_clean)
 ```{r}
 
 data_ = data_ %>%
-  mutate(residence_clean = sapply(residence, remplacement))
+  mutate(clean_residence = sapply(residence, remplacement_lieux))
 
-unique(data_$residence_clean)
+unique(data_$clean_residence)
 
 
 
@@ -545,16 +595,40 @@ Challenges techniques :
 table(data_$q2_pop_phoques)
 ```
 
+::: fragment
+
+On a beaucoup de réponses mixtes, il faudrait extraire les données chiffrées, les ordres de grandeur, et les réponses comme `Non` et `Oui`
+
+:::
+
 ----------
 
 ```{r, echo = T}
 
-remplacement_1 = function(x_){
+remplacement_phoques_1 = function(x_){
+#' Cette fonction donne une indication sur la connaissance (oui ou non) de la population de phoque
+#' @param x_ une chaine de caractères
+
+  
   return(grepl("non", str_to_lower(x_)))
 }
 
 
-remplacement = function(x_, option = "max"){
+remplacement_phoques_population = function(x_, option = "max"){
+  
+#' Extraction et classification des nombres liés aux populations de phoques
+#'
+#' Cette fonction analyse une chaîne de caractères pour extraire des nombres 
+#' (représentant des populations de phoques) et les classifier en différentes catégories 
+#' (`Beaucoup`, `Centaines`, `Milliers`, `Quelques uns`, etc.).
+#'
+#' @param x_ Une chaîne de caractères contenant une estimation de population (peut inclure des chiffres, des mots ou des expressions variées).
+#' @param option Une option définissant si l'on souhaite récupérer la valeur minimale ou maximale 
+#' dans le cas de plages numériques (`"min"` ou `"max"`). Par défaut `"max"`.
+#' @return Une valeur numérique si un chiffre est détecté, ou une catégorie (`"Beaucoup"`, `"Centaines"`, `"Milliers"`, `"Quelques uns"`, `"Non"`, etc.).
+
+    
+
   # Approche par regex : 
   potential_number = x_ %>%
     gsub(" ", "", .)%>%
@@ -610,17 +684,44 @@ remplacement = function(x_, option = "max"){
 }
 
 
-#for(i in 1:nrow(data_)){
-# print(paste(data_[i, 'q2_pop_phoques'],
-#       remplacement(data_[i,'q2_pop_phoques'], option = "max")))
-#}
-
-data_ = data_ %>%
-  mutate(pop_clean_yes_no = sapply(q2_pop_phoques, remplacement_1),
-         pop_clean_max = sapply(q2_pop_phoques, remplacement))
-
 
 ```
+
+
+
+```{r}
+table(data_$clean_pop_max)
+```
+
+----
+
+
+```{r, echo = T}
+data_ = data_ %>%
+  mutate(clean_pop_yes_no = sapply(q2_pop_phoques, remplacement_phoques_1),
+         clean_pop_max = sapply(q2_pop_phoques, remplacement_phoques_population))
+
+# On récupère également la distinction entre chiffrée et ordre de grandeur
+chiffre_ou_non = data_%>%
+  select(clean_pop_max)%>%
+  pull()%>%
+  as.numeric()
+
+
+data_ = data_ %>%
+  mutate(
+    # Créer la variable numérique en convertissant les valeurs en numérique
+    chiffre_num = as.numeric(clean_pop_max),
+    
+    # Remplacer les valeurs non numériques par NA
+    clean_pop_phoque_chiffre = if_else(is.na(chiffre_num), NA_real_, chiffre_num),
+    
+    # Créer la variable non numérique pour les réponses textuelles
+    clean_pop_phoque_non_chiffrée = if_else(is.na(clean_pop_phoque_chiffre), clean_pop_max, NA_character_)
+  )
+
+```
+
 
 
 
@@ -655,7 +756,7 @@ On peut utiliser un prétraitement des données et la fonction `startsWith(x, pr
 
 ::: fragment
 
-[Q5 : utilisez `startsWith()` pour compléter la fonction suivante]
+[Q5 : utilisez `startsWith()` pour compléter la fonction suivante et rédigez la documentation]{.bg}
 
 :::
 
@@ -669,7 +770,12 @@ csp_questionnaire = c("Entreprise/tourisme", "Restauration/hôtellerie" , "Agric
                       "Cadre supérieur", "Employé", "Ouvrier")
 
 
-remplacement_questionnaire = function(x_){
+remplacement_professions = function(x_){
+  
+#' Classification des professions à partir d'un questionnaire
+#'
+
+
   x = x_%>%
     str_to_lower()%>%
     gsub("é", "e", .)%>%
@@ -683,7 +789,9 @@ remplacement_questionnaire = function(x_){
                                               "recruteur de donateurs pour association")){
     return("Employé.e")
   }else if(x %in% c('sans', 'rien', 'sans emploi', 'chômeur','chômage', 'non', "femme au foyer")){ 
-    # COMPLETER L'EXPRESSION
+  
+  # COMPLETER L'EXPRESSION
+  
     return('Sans activité professionelle (hors retraite)')
   }else if(startsWith(x, 'retrait')){
     return('Retraité.e') 
@@ -716,7 +824,16 @@ csp_questionnaire = c("Entreprise/tourisme", "Restauration/hôtellerie" , "Agric
                       "Cadre supérieur", "Employé", "Ouvrier")
 
 
-remplacement_questionnaire = function(x_){
+remplacement_professions = function(x_){
+
+#' Classification des professions à partir d'un questionnaire
+#'
+#' Cette fonction standardise les réponses d'un questionnaire concernant la profession des répondants 
+#' en les classant dans des catégories socio-professionnelles.
+#'
+#' @param x_ Une chaîne de caractères représentant une profession, telle qu'indiquée par un répondant.
+#' @return Une chaîne de caractères correspondant à une catégorie professionnelle standardisée.  
+
   x = x_%>%
     str_to_lower()%>%
     gsub("é", "e", .)%>%
@@ -759,10 +876,10 @@ remplacement_questionnaire = function(x_){
 
 ```{r}
 data_ = data_ %>%
-  mutate(professions_clean = sapply(profession, remplacement_questionnaire))
+  mutate(clean_professions = sapply(profession, remplacement_professions))
 ```
 
-## Variables catégorielles non ordonnées (nominales) : nom des phoques
+## Variables catégorielles nominales : nom des phoques
 
 Ici, on va adopter la même approche par fonction de `remplacement()`
 
@@ -778,9 +895,20 @@ On va prendre comme réponses possible : `oui`, `non`, `Partiel: veau marin` et 
 
 :::
 
-```{r}
+----------
 
-remplacement = function(x){
+```{r, echo = T}
+
+remplacement_phoques_noms = function(x){
+  
+#' Standardisation des réponses sur les espèces de phoques observées
+#'
+#' Cette fonction catégorise les réponses concernant la présence des espèces de phoques 
+#' (veau-marin et phoque gris) en les regroupant dans des classes standardisées.
+#'
+#' @param x Une chaîne de caractères correspondant à une réponse du questionnaire sur les phoques observés.
+#' @return Une chaîne de caractères standardisée : `"Oui"`, `"Non"`, `"Partiel : Veau-marin"`, `"Partiel : Phoque gris"`, ou la réponse initiale si elle ne correspond à aucune catégorie.
+    
   if(x %in% c('Veaux-marins et phoques gris', 'Veau marin , phoque gris', 'OUI phoque gris et phoque veau-marin',
               'Gris et veaux marins', 'Veau marin et phoque', 'Les deux', 'Oui', 'Gris et veau marin', 
               'Gris et veaux marins', "Les deux ", 'Oui les deux')){
@@ -792,7 +920,7 @@ remplacement = function(x){
                     'Phoque veau-marin oui', 'Vaumarin', 'Veau marin',
                     'Veau-marin et phoque commun', 'Veau-marin', 'Oui veau-marin')){
     return("partiel : Veau-marin")
-  }else if(x %in% c('Gris', 'Oui phoque gris', 'Phoque gris et blanc', 'Phoques gris')){
+  }else if(x %in% c('Gris', 'Oui phoque gris', 'Phoque gris et blanc', 'Phoques gris', 'Phoque gris')){
     return('Partiel : phoque gris')
   }else{
     return(x)
@@ -800,7 +928,7 @@ remplacement = function(x){
 }
 
 data_ = data_ %>%
-  mutate(q2_pop_clean = sapply(q2_pop_phoques, remplacement))
+  mutate(clean_noms_phoques = sapply(q1_nom_phoques, remplacement_phoques_noms))
 
 ```
 
@@ -901,17 +1029,21 @@ for (i in 1:nrow(data_)) {
 
 :::
 
-::: fragment
+---------
+
+
 
 [Q7 : Convertir la matrice en dataframe pour une meilleure lisibilité]{.bg}
 
-```{r}
+::: fragment
+
+```{r, echo = T}
 
 # Convertir la matrice en dataframe pour une meilleure lisibilité
 
 table_occurrences_df <- as.data.frame(table_occurrences)
 
-colnames(table_occurrences_df) = paste0("q_clean", c('nature_libre','surfréquentation', 'conflits', 
+colnames(table_occurrences_df) = paste0("q_clean_", c('nature_libre','surfréquentation', 'conflits', 
                                    'patrimoine','trop_veau', 'trop_gris','pas_plus_phoques',
                                    'trop_poisson','opportunité_économique', 'menace_économique',
                                    'groupe_travail', 'panneaux',
@@ -921,7 +1053,7 @@ table_occurrences_df = table_occurrences_df%>%
   mutate('ID' = seq(1, nrow(table_occurrences_df)))
 ```
 
-
+:::
 
 
 ## Variables catégorielles nominales multiples  : questions sur les phoques
@@ -974,6 +1106,7 @@ for (i in 1:nrow(data_)) {
 
 ```
 
+
 ```{r}
 
 # Transformer la matrice en dataframe, 
@@ -996,7 +1129,6 @@ table_phoques = table_phoques %>%
 - Il y a beaucoup trop de réponses uniques (64)
 - Il faut revenir aux résultats du questionnaire, et traiter notamment les réponses collées (variables catégorielles multiples)
 - On refait du [one hot encoding]{.bg}
-
 
 :::
 
@@ -1047,16 +1179,17 @@ for (i in 1:nrow(data_)) {
   }
 }
 
+```
 
+```{r}
+# IV. On crée un format dataframe
 table_loisir = as.data.frame(table_occurrences)
 colnames(table_loisir) = paste0("clean_",
                                 colnames(table_loisir))
 table_loisir = table_loisir %>%
   mutate(ID = seq(1:nrow(table_loisir)))
-
-
-
 ```
+
 
 :::
 
@@ -1066,9 +1199,9 @@ table_loisir = table_loisir %>%
 
 On merge tout et on sélectionne les données propres : 
 
-[Q8 : utilisez le pipe operator (%>%) pour sélectionner les colonnes de la full_data et récupérer les colonnes qui ont le nom `clean` avec `grepl`]{.bg}
+[Q8 : utilisez le pipe operator (%>%) pour sélectionner les colonnes de la `full_data` et récupérer les colonnes qui ont le nom `clean` avec `grepl`]{.bg}
 
-```{r, echo = T}
+```{r}
 
 full_data = left_join(data_, table_phoques, by = 'ID')
 full_data = left_join(full_data, table_occurrences_df, by = 'ID')
@@ -1081,31 +1214,758 @@ full_data = left_join(full_data, table_loisir, by = "ID")
 
 ::: fragment
 
+On sauvegarde les données en `.xlsx` mais les formats de référence sont plutot:
+
+- `.csv`
+- pour des données plus larges `.json`
+- `.parquet` 
+- ou encore les `data.tables` pour les format de matrices avec beaucoup de `0` suivant le [one hot encoding]{.alert} de larges données (accélère également leur écriture et leur ouverture)
+
+:::
+
+::: fragment
+
 ```{r, echo=T}
 data_clean = full_data %>%
-  select(c('date', 'lieu', 'genre', 'classe_age',    # Les données déja propres
+  select(c('date', 'genre', 'classe_age',    # Les données déja propres
            colnames(full_data)[full_data %>%         # Les colonnes que l'on a nommé clean
                                  colnames() %>%      # car nettoyées!
                                  grepl("clean", .)]
            )
          )
 
+colnames(data_clean) = gsub("clean_", "", colnames(data_clean))
+
+write.xlsx(data_clean, here("data", "processed", "data_cleaned.xlsx"))
+
+
 ```
+
+:::
+
+## Documentation
+
+::: incremental
+
+- Créez un fichier `.txt` ou `.md` qui détaille les données *brutes* et enregistrez le dans `/docs/README_rawdata.txt`
+- Créez un fichier `.txt` ou `.md` qui détaille les transformations appliquées aux données et les fonctions utilisées, et enregistrez le dans `/docs/README_datacleaning.txt`
+  - Faites un [dictionnaire de variables]{.bg}: dansl'idéal, il faut le faire, mais je l'ai fait pour vous (enfin, `ClaudeAI` l'a fait à ma place)
+    - Nom des variables; Descriptions; Type de variables ;Unité de mesure ;Valeurs possibles ;Valeurs manquantes ;Source des données; Commentaires et remarques
+- Idéalement, il faudrait refaire tout cela pour réplication de sorte que : 
+  - Updatez le script `fonctions.R` avec les fonctions que l'on a utilisées : elles ne sont pas encore très modulaires ou beaucoup réutilisables, mais c'est un premier pas. 
+  - Appelez le script `fonctions.R` avec `source(here("scripts", "fonctions.R"))` en début de script et utilisez les fonctions
 
 :::
 
 # Analyse de données
 
+## Quelles analyses mener? 
+
+::: incremental
+
+1. Etude des valeurs manquantes
+2. Etude des distributions des variables clés
+3. Analyse de corrélation entre variables
+4. Analyse multivariées
+
+:::
+
+::: fragment
+
+```{r}
+# Nettoyer l'espace
+rm(list = ls()) # Enlève tout ce qu'il y a dans l'environnement
+
+library(dplyr)
+library(tidyr)
+library(magrittr)
+library(factoextra)
+library(FactoMineR)
+library(reshape2)
+
+renv::snapshot()
+
+data_ = read.xlsx(here('data', 'processed', 'data_cleaned.xlsx'))
+
+data_$classe_age = factor(data_$classe_age, 
+                          levels = c("<20 ans","20-35 ans","35-50 ans",
+                                     "50-65 ans", ">65 ans"))
+
+to_factor_vect =  c(colnames(data_)[c(startsWith(colnames(data_), 'phoque_'))],
+                    colnames(data_)[c(startsWith(colnames(data_), 'q_'))],
+                    c("pêche):", "chasse","voile","vélo","natation", "planceàvoile" ,"paddle","kayak/canoë",
+                      "kitesurf","equitation","wingfoil","promenade","marche","naturaliste","Autre" ))
+to_factor_vect=to_factor_vect[to_factor_vect != 'nom_phoques']
+data_ = data_ %>%
+  mutate(across(all_of(to_factor_vect), as.factor))
+```
+
+:::
+
 ## Analyses simples
 
-## Analyses bivariées
-
-## ANOVA
-
-## ACM
-
-# Cartographie
 
 
+Pour cela, on va utiliser la bibliothèque `ggplot2` (Grammar of Graphics) qui prend les éléments suivants : 
+
+::: incremental
+
+- Les données (`data`)
+- Les "aesthetics" (`aes()`) : comment représenter les variables, qui est en abscisse (`x=`), en ordonnée (`y=`), en couleur (`color=`)
+- La géométrie (`geom()`): le type de graphique
+- Une variété d'éléments de style : 
+  - `scale_color_`, `scale_fill` pour les couleurs
+  - `theme()` pour les axes, polices, tailles, couleur de fond
+- On peut également représenter sur différents panels avec les fonctions `facet_`
+- Marche au mieux lorsque les données sont sous le format `tidy`: une variable par colonne, une observation par ligne
+  - On utilise parfois `pivot_longer()` pour transformer des données "larges" en "longues", pour tout représenter d'un coup
+
+:::
+
+----
+
+## Les variables démographiques
+
+::: {.panel-tabset}
+
+### Code
+
+```{r, echo = T}
+custom_theme = function(){
+  theme_minimal() +  # Base theme
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),  # Rotate x-axis labels by 45 degrees
+    legend.position = "bottom"
+  )
+}
+
+p = data_ %>%
+  select(c('genre', 'classe_age','date', 'professions', 'lieu')) %>%
+  pivot_longer( - date, 
+               values_to = 'values',
+               names_to = 'names')%>%
+    ggplot(aes(x=values))+
+    geom_histogram(stat="count")+
+    facet_grid(~names,  scales = "free")+
+  custom_theme()
+  
+```
+
+### Graph 
+
+```{r}
+p
+```
+
+:::
+
+----
+
+[Q1 : Ecrivez le code pour plotter la variable `classe_age` avec `ggplot`]{.bg}
+
+
+:::{.panel-tabset}
+
+### Code et indices
+
+Indices : 
+
+- les datas sont elles `tidy` avec une seule variable? 
+- Pensez à utiliser la caractéristique `stat = count`
+
+::: fragment
+
+```{r, echo = T}
+
+
+p = data_ %>%
+  ggplot(aes(x = classe_age))+
+  geom_bar(stat= 'count')
+
+
+```
+
+:::
+
+### Plot
+```{r}
+p
+```
+
+
+:::
+
+-----
+
+Ce n'est pas très joli, ni modulaire : on va écrire une fonction
+
+::: {.panel-tabset}
+
+
+### Code
+
+```{r}
+
+library(RColorBrewer)
+
+
+
+plot_distribution = function(variable, data = data_){
+  
+  if(!is.numeric(data[[variable]])){ # Check if binary or character
+    stat_ = 'count'
+  }else{
+    stat_ = "bin"
+  }
+  data %>%
+    ggplot(aes(x = get(variable), fill = get(variable)))+
+    geom_histogram(stat = stat_)+
+    xlab(variable)+
+    labs(fill = ' ')+
+    custom_theme()+
+    scale_fill_brewer(palette = "Paired")
+}
+
+
+
+```
+
+### Age
+
+```{r, echo = T}
+
+plot_distribution("classe_age")
+ggsave(here('results','figure', paste0("classe_age",'.jpg')), width = 25, height = 18, units = 'cm')
+
+```
+
+
+### Professions
+
+```{r, echo = T}
+
+plot_distribution("professions")
+ggsave(here('results','figure', paste0("professions",'.jpg')), width = 25, height = 18, units = 'cm')
+
+```
+
+
+### Lieux
+
+```{r, echo = T}
+
+plot_distribution("lieu")
+ggsave(here('results','figure', paste0("lieu",'.jpg')), width = 25, height = 18, units = 'cm')
+
+
+```
+:::
+
+
+## Population de phoques : noms
+
+```{r, echo = T}
+
+plot_distribution("noms_phoques")
+ggsave(here('results','figure', paste0("noms_phoques",'.jpg')), width = 25, height = 18, units = 'cm')
+
+
+```
+
+## Population de phoques
+
+```{r, echo = T}
+
+plot_distribution("pop_phoque_chiffre")
+ggsave(here('results','figure', paste0("pop_phoque_chiffre",'.jpg')), width = 25, height = 18, units = 'cm')
+
+
+```
+
+
+------------
+
+::: {.panel-tabset}
+
+
+### Phoques paisibles
+
+```{r, echo = T}
+
+plot_distribution("phoque_paisible")
+ggsave(here('results','figure', paste0("phoque_paisible",'.jpg')), width = 25, height = 18, units = 'cm')
+
+
+```
+
+### Invasifs et nuisibles
+
+```{r, echo = T}
+
+plot_distribution("phoque_invasive")
+ggsave(here('results','figure', paste0("phoque_invasive",'.jpg')), width = 25, height = 18, units = 'cm')
+
+
+```
+
+### Concurrents
+
+```{r, echo = T}
+
+plot_distribution("phoque_concurrent")
+ggsave(here('results','figure', paste0("phoque_concurrent",'.jpg')), width = 25, height = 18, units = 'cm')
+
+
+```
+
+### Menacés
+
+```{r, echo = T}
+
+plot_distribution("phoque_menacee")
+ggsave(here('results','figure', paste0("phoque_menacee",'.jpg')), width = 25, height = 18, units = 'cm')
+
+
+```
+
+### Prédateurs
+
+```{r, echo = T}
+
+plot_distribution("phoque_prédateur")
+ggsave(here('results','figure', paste0("phoque_prédateur",'.jpg')), width = 25, height = 18, units = 'cm')
+
+```
+
+:::
+
+## Analyse bivariée
+
+On cherche la répartition de notre échantillon entre classes d'âge et différente caractéristiques : 
+
+:::{.panel-tabset}
+
+### Code
+
+```{r, echo = T}
+
+p = data_ %>%
+ggplot(aes(x = classe_age, fill = professions)) +
+  geom_bar(position = "fill") +  # Normalized proportions
+  theme_minimal()+
+  scale_fill_brewer(palette = "Paired")
+
+```
+### Graphique
+
+```{r}
+ggsave( here('results','figure', paste0("professions",'.jpg')), 
+        plot = p, 
+        width = 25, height = 18, units = 'cm')
+
+p
+```
+
+
+:::
+
+## Analyse bivariée : phoques paisible et nature sauvage
+
+[Q2 : plottez la correlation entre `phoque_paisible` et `q_nature_libre`]{.bg}
+
+::: fragment
+
+```{r, echo = T}
+data_ %>%
+  ggplot(aes(x = phoque_paisible, fill = q_nature_libre)) +
+  geom_bar(position = "fill") +  # Normalized proportions
+  theme_minimal()+
+  scale_fill_brewer(palette = "Paired")
+```
+```{r}
+ggsave(here('results','figure', paste0("phoque_paisible_nature",'.jpg')), width = 25, height = 18, units = 'cm')
+
+```
+
+
+:::
+
+## Analyse bivariée : phoques paisible et connaissance des phoques
+
+[Q3 : plottez la correlation entre `phoque_paisible` et `pop_yes_no`]{.bg}
+
+::: fragment
+
+```{r, echo = T}
+data_ %>%
+  ggplot(aes(x = phoque_paisible, fill = pop_yes_no)) +
+  geom_bar(position = "fill") +  # Normalized proportions
+  theme_minimal()+
+  scale_fill_brewer(palette = "Paired")
+```
+```{r}
+ggsave(here('results','figure', paste0("phoque_paisible_pop_yes_no",'.jpg')), width = 25, height = 18, units = 'cm')
+
+```
+
+
+:::
+
+
+## Analyses multivariées : global
+
+::: {.panel-tabset}
+
+### Code
+
+```{r, echo=T}
+
+correlation_matrix = cor(data_ %>%
+                           select(to_factor_vect)%>%
+                           select(- c('wingfoil'))%>%
+                           mutate(across(everything(), as.numeric)), 
+                         method = 'pearson')
+
+
+# On efface la diagonale (corrélation de 1) et on garde seulement un triangle pour éviter la redondance
+diag(correlation_matrix) = NA 
+
+# Convert matrix to long format for ggplot
+cor_long = reshape2::melt(correlation_matrix)
+
+p = ggplot(cor_long, aes(Var1, Var2, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0) +
+  labs(title = "Correlation Heatmap of One-Hot Encoded Variables",
+       x = " ",
+       y = " ",
+       fill = "Correlation") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+### Heatmap de toutes les variables
+
+```{r}
+ggsave(here('results','figure', paste0("heatmap",'.jpg')), 
+       plot = p,
+       width = 25, height = 18, units = 'cm')
+
+p
+```
+
+
+:::
+
+## Analyse multivariée : restreinte
+
+:::{.panel-tabset}
+
+### Code
+
+On va essayer de restreindre un peu l'analyse : 
+[Q4 : prenez un sous ensemble de variables, comme les caractéristiques des phoques et les réponses aux questions et faites une heatmap]{.bg}
+
+::: fragment
+
+```{r, echo = T}
+correlation_matrix = cor(data_ %>%
+                           select(colnames(data_)[startsWith(colnames(data_), "q_")])%>%
+                           mutate(across(everything(), as.numeric)), 
+                         method = 'pearson')
+
+diag(correlation_matrix) = NA 
+
+# Convert matrix to long format for ggplot
+cor_long = reshape2::melt(correlation_matrix)
+
+
+
+```
+
+
+:::
+
+### Graph
+
+```{r}
+ggplot(cor_long, aes(Var1, Var2, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0) +
+  labs(title = "Correlation Heatmap of One-Hot Encoded Variables",
+       x = "Variable",
+       y = "Variable",
+       fill = "Correlation") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+```{r}
+
+ggsave(here('results','figure', paste0("heatmap_restreinte",'.jpg')), 
+       plot = p,
+       width = 25, height = 18, units = 'cm')
+
+p
+```
+
+:::
+
+# Analyse par correspondance multiple 
+
+Technique d'analyse multivariées pour identifier la structure d'un espace de grande dimension
+
+
+## Origine et développement {#sec-ACM}
+
+::: incremental
+- [Jean-Paul Benzécri]{.bg} (années 1960) :
+    - Pionnier de l’analyse des correspondances, il développe l’Analyse des Correspondances Simples (ACS) pour [représenter graphiquement la structure des tableaux de contingence]{.bg2}.
+    - Nécessité de [visualiser les relations entre catégories]{.bg2} dans des enquêtes sociales, marketing, etc.
+    - Extension vers l’Analyse des Correspondances Multiples (ACM) 
+    - Adaptation de l’ACS pour [traiter simultanément plusieurs variables qualitatives]{.bg2}, en combinant plusieurs tableaux de contingence dans une matrice globale.
+
+- [Harold Hotelling ]{.bg} (années 1930-1940) :
+    - Pionnier de l’Analyse en Composantes Principales (ACP), il formalise la [réduction de dimensionnalité]{.bg2} pour des variables quantitatives.
+    - Introduit l’idée de décomposition en valeurs propres, qui vise à extraire des [axes expliquant la plus grande part de la variance]{.bg2}.
+
+- Théorie de l'information et géométrie
+    - [ L’inertie (ou dispersion)]{.bg2} dans les données est mesurée de manière similaire à la variance en ACP, ce qui permet de comparer et de représenter les structures des données.
+
+
+:::
+
+
+## Intuition mathématique – De la géométrie à la décomposition
+
+
+::: incremental
+- [Principe de base : représentation géométrique]{.bg}
+    - Chaque individu est représenté par un point dans un espace de dimension élevée, chaque axe correspondant à une modalité (catégorie).
+    - Objectif : trouver un [espace de dimension réduite qui capture l’essentiel]{.bg2} [des relations entre modalités et individus]{.bg2}
+
+- Mesure de la dispersion :[ l’inertie]{.bg}
+    - Inertie totale : analogue à la variance en ACP, elle mesure la [dispersion totale des points]{.bg2} [par rapport au centre.]{.bg2}
+    - Chaque modalité contribue à cette inertie selon [sa fréquence et son écart par rapport à l’attendu]{.bg2} en cas d’indépendance.
+
+- Décomposition en [valeurs singulières (SVD)  ]{.bg}
+    - Inspirée par l’ACP de Hotelling, la SVD permet de décomposer la matrice normalisée en axes factoriels orthogonaux.
+    - La SVD [« fait pivoter » l’espace initial ]{.bg2} pour révéler les directions (axes) où la dispersion (l’information) est maximale.
+    - Les axes sélectionnés expliquent successivement des parts décroissantes de l’inertie totale.
+
+:::
+
+::: fragment
+
+[[Appendix]{.button}](#sec-appendix)
+
+:::
+
+## Fonctionnement pas à pas – De la donnée brute à l’interprétation 
+
+::: incremental
+
+- [Préparation des données : construction d’un tableau binaire :]{.bg}
+    - Chaque individu est décrit par des réponses qualitatives, transformées en indicateurs (1 ou 0) pour chaque modalité.
+- [Normalisation et calcul des distances]{.bg}
+    - Utilisation de la [distance du khi-deux]{.bg2}, adaptée aux données qualitatives, pour mesurer la similitude entre profils.
+    - [Pondération des modalités]{.bg2} selon leur fréquence pour équilibrer leur influence.
+- [Décomposition via SVD]{.bg}
+    - La matrice normalisée est décomposée en composantes grâce à la SVD, qui découle directement des idées de réduction de dimensionnalité portées par l’ACP de Hotelling.
+    - Chaque axe factoriel est associé à une valeur propre qui quantifie la part d’inertie expliquée.
+
+- [Projection et interprétation]{.bg}
+    - Projection simultanée des individus et des modalités sur les axes factoriels.
+    - [Les points proches indiquent des profils similaires.]{.bg2}
+    - [Les axes traduisent des tendances ou oppositions sous-jacentes]{.bg2} (ex. profils traditionnels vs. profils modernes).
+
+:::
+
+## Idée générale
+
+::: incremental
+
+- On minimise la distance du khi-deux intra-classe : [les modalités proches doivent rester proches]{.bg}
+- On maximise la dispersion entre groupes distincts: [les modalités et individus différents doivent être bien séparés sur les axes factoriels]{.bg2}.
+
+:::
+
+
+## Mise en pratique
+
+::: incremental 
+- Il faut préparer les données: on ne va pas tout garder
+- Par ailleurs, la structure de nos questions n'est pas parfaite pour utiliser l'ACM :
+  - Fait pour quand plusieurs niveaux d'une même question sont mutuellement exclusifs
+  - Nous, on a autorisé 2 ou 5 réponses par question(s)
+  - On n'a pas exactement la même structure, donc la distance du [khi-deux]{.bg2} risque d'être un peu modifiée
+  - On pourrait modifier les réponses et les pondérer par le nombre de réponses
+- Malgré ces problèmes, on va illustrer la méthode : on réfléchira ensuite à la meilleure manière
+- Pour cela on utilise les bibliothèques `FactoMineR` et `factoextra`
+
+:::
+
+```{r, echo = T}
+library(FactoMineR)
+library(factoextra)
+
+# I. Préparer les données : il faut que des facteurs
+
+data_for_analysis = data_%>%
+  select(c(to_factor_vect, 'genre', 'classe_age', 'pop_yes_no', 'professions', 'noms_phoques'))%>%
+   mutate(across(everything(), as.factor))%>%
+  drop_na()
+  
+```
+
+
+## Réaliser l'ACM
+
+- La fonction `MCA()` va :
+  - Construire le tableau disjonctif complet.
+    - Calculer la distance du khi-deux pour chaque individu et modalité.
+    - Réaliser la décomposition en valeurs singulières qui, de manière implicite, minimise la somme des distances (c'est-à-dire l'inertie non expliquée).
+- On enlève les modalités les plus corrélées
+    
+```{r}
+cor_threshold <- 0.5
+cor_pairs <- which(abs(correlation_matrix) > cor_threshold, arr.ind = TRUE)
+
+# Remove the diagonal (where row and column are the same)
+cor_pairs <- cor_pairs[cor_pairs[, 1] != cor_pairs[, 2], ]
+
+# Get the variable names for the pairs
+pair_names <- apply(cor_pairs, 1, function(x) paste(rownames(correlation_matrix)[x[1]], "-", colnames(correlation_matrix)[x[2]]))
+
+# Print the pairs
+print(pair_names)
+```
+    
+    
+```{r, echo = T}
+
+correlation_matrix[which(correlation_matrix>.7)]
+
+res.mca <- MCA(data_for_analysis%>%
+                 select(-c('classe_age', 'pop_yes_no', 'professions', 'noms_phoques', 
+                           'q_trop_veau', 'q_pas_plus_phoques')), 
+               graph = FALSE)
+
+```
+
+
+## Visualiser les résultats 
+
+::: fragment
+
+On va visualiser le [scree plot]{.bg2} qui montre la part de variance expliquée par chaque axe factoriel
+
+:::
+
+::: fragment
+
+```{r, echo = T}
+fviz_screeplot(res.mca, addlabels = TRUE, ylim = c(0, 50),
+               title = "Inertie expliquée par les axes")
+```
+
+:::
+
+## Visualisation des individus et des modalités 
+
+```{r}
+fviz_mca_biplot(res.mca, 
+                repel = TRUE, 
+                title = "Biplot ACM : individus et modalités")
+```
+
+## Visualisation des modalités
+
+```{r}
+fviz_mca_var(res.mca, 
+             repel = TRUE,           # Évite les chevauchements de textes
+             title = "Représentation des modalités structurantes")
+```
+## Visualisation des modalités restreintes
+
+```{r}
+fviz_mca_var(res.mca, 
+             repel = TRUE, 
+             select = list(contrib = 20),  # Affiche les 20 modalités les plus contributives
+             title = "Modalités les plus contributives")
+```
+
+## Visualisation des modalités restreintes
+
+```{r}
+fviz_mca_var(res.mca, col.var = "contrib",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), 
+             select = list(contrib = 20),  # Affiche les 20 modalités les plus contributives
+             repel = TRUE, # avoid text overlapping (slow)
+             ggtheme = theme_minimal(), title= " ",
+) 
+```
+
+# Visualisation des individus
+
+```{r}
+
+fviz_mca_ind(res.mca,
+             label = "none", # masquer le texte des individus
+             ggtheme = theme_minimal (), 
+             title=" ")
+
+```
+
+## Visualisation des individus avec classes d'age
+
+
+```{r, echo = T}
+
+palette_5 <- c("#E41A1C", "#377EB8", "#4DAF4A", "#FF7F00", "#984EA3")
+
+
+fviz_mca_ind(res.mca,
+             label = "none", # masquer le texte des individus
+             ggtheme = theme_minimal (), 
+             palette = palette_5,
+             habillage = data_for_analysis$classe_age,
+             title=" ")
+
+```
+
+```{r}
+
+palette_11 <- c("#E41A1C", "#377EB8", "#4DAF4A", "#FF7F00", "#984EA3", 
+                "#FF00FF", "#A6CEE3", "#1F77B4", "#B2DF8A", "#FB9A99", "forestgreen", "navyblue")
+
+fviz_mca_ind(res.mca,
+             label = "none", # masquer le texte des individus
+             ggtheme = theme_minimal (), 
+             palette = palette_11,
+             habillage = data_for_analysis$profession,
+             title=" ")
+
+```
+
+
+# Annexes
+
+## Différences des méthodes géométriques {#sec-appendix}
+
+- Type de données
+    - ACP : Variables quantitatives.
+    - ACS : Deux variables qualitatives (tableau de contingence).
+    -   ACM : Plusieurs variables qualitatives (tableau disjonctif complet).
+
+- Méthodologie sous-jacente
+    - ACP : Basée sur la variance et la covariance (analyse matricielle des données numériques).
+    - ACS & ACM : Basées sur les fréquences observées vs. attendues (utilisation de la distance du khi-deux) et la décomposition en valeurs singulières des tableaux normalisés.
+
+- Objectifs analytiques
+    - ACP : Réduction de dimensionnalité et interprétation des relations linéaires entre variables quantitatives.
+    - ACS : Étude de l'association entre deux variables catégorielles.
+    - ACM : Exploration simultanée et synthèse des relations entre plusieurs variables qualitatives.
+
+[[Back to main]{.button}](#sec-ACM)
 
 

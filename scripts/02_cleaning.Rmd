@@ -32,6 +32,7 @@ library(stringr)
 library(ggplot2)
 library(ggsci)
 library(purrr)
+library(openxlsx)
 
 ```
 
@@ -111,7 +112,16 @@ unique(data_$lieu)
 
 ```{r, echo = T}
 
-remplacement = function(x_){
+remplacement_lieux = function(x_){
+#' Standardisation des noms de lieux
+#'
+#' Cette fonction normalise les noms de lieux en les mettant en minuscules, 
+#' en supprimant les accents et les articles, puis en les remplaçant par des 
+#' noms standardisés selon une liste prédéfinie.
+#'
+#' @param x_ Une chaîne de caractères représentant un nom de lieu (potentiellement mal orthographié ou mal formaté).
+#' @return Une chaîne de caractères avec le nom de lieu standardisé. Si aucun correspondance n'est trouvée, la fonction retourne l'entrée originale.
+
   x = str_to_lower(x_) # On met tout en minuscule
   x = x %>%
     gsub("\\ble\\b", "", .)%>% # On enlève "le" à l'aide d'une expression régulière (regex)
@@ -129,10 +139,11 @@ remplacement = function(x_){
     return('Berck-sur-mer')
   }else if(x %in% c('cayeux-sur-mer', 'cayeux', "cayeux sur mer")){
     return('Cayeux-sur-mer')
+  }
+  
   # Q1 : A COMPLETER POUR SAINT VALERY JUSQU'A CE QU'UNE SEULE ENTREE FONCTIONNE
-  
-  
-  }else if(x %in% c('hourdel', 'pointe', 'pointe du hourdel')){
+
+  else if(x %in% c('hourdel', 'pointe', 'pointe du hourdel')){
     return("Pointe du Hourdel")
   }else if(x %in% c("feuquieres en vimeu",  "feuquieres - en - vimeu" )){
     return('Feuquières-en-Vimeu')
@@ -160,10 +171,13 @@ remplacement = function(x_){
     return('Arras')
   }else if( x %in% c("dunkersue")){
     return('Dunkerque')
-  }else{
+  }
+  
+  else{
     return(x_)
   }
 }
+
 
 
 ```
@@ -174,20 +188,22 @@ remplacement = function(x_){
 ```{r, echo =T}
 
 data_ = data_ %>%
-  mutate(lieu_clean = sapply(lieu, remplacement)) # On applique la fonction remplacement à chaque lieu
+  mutate(clean_lieu = sapply(lieu, remplacement_lieux)) # On applique la fonction remplacement à chaque lieu
                                                   # et sapply renvoie un vecteur qui est assigné à 
                                                   # une nouvelle variable
-unique(data_$lieu_clean)
+unique(data_$clean_lieu)
 
 ```
 
 Enfin, on enregistre la nouvelle data
 
+**Q2 : enregistrez la nouvelle data avec dplyr, mutate et sapply**
+
 ```{r}
 
 # Q2 : enregistrez la nouvelle data avec dplyr, mutate et sapply
 
-#unique(data_$residence_clean)
+#unique(data_$clean_residence)
 
 
 
@@ -197,6 +213,7 @@ Enfin, on enregistre la nouvelle data
 
 On a classé la population par groupes d'âge.  L'usage de variables `factor` permet d'avoir des variables catégorielles ordonnées, que l'on peut représenter sur un axe ordonné en précisant les niveaux (`levels`)
 
+**Q3 : transformez l'age en variable catégorielle ordonnée**
 
 ```{r, echo = T}
 
@@ -251,6 +268,7 @@ Challenges techniques :
 - Transformer la variable `chr` en variable `int`
 - On va utiliser la population totale
 
+**Q4 : Tabulez la population**
 
 ```{r}
 
@@ -261,13 +279,30 @@ Challenges techniques :
 
 ```{r, echo = T}
 
-remplacement_1 = function(x_){
-  x = str_to_lower(x_)
-  return(grepl("non", x))
+remplacement_phoques_1 = function(x_){
+#' Cette fonction donne une indication sur la connaissance (oui ou non) de la population de phoque
+#' @param x_ une chaine de caractères
+
+  
+  return(grepl("non", str_to_lower(x_)))
 }
 
 
-remplacement = function(x_, option = "max"){
+remplacement_phoques_population = function(x_, option = "max"){
+  
+#' Extraction et classification des nombres liés aux populations de phoques
+#'
+#' Cette fonction analyse une chaîne de caractères pour extraire des nombres 
+#' (représentant des populations de phoques) et les classifier en différentes catégories 
+#' (`Beaucoup`, `Centaines`, `Milliers`, `Quelques uns`, etc.).
+#'
+#' @param x_ Une chaîne de caractères contenant une estimation de population (peut inclure des chiffres, des mots ou des expressions variées).
+#' @param option Une option définissant si l'on souhaite récupérer la valeur minimale ou maximale 
+#' dans le cas de plages numériques (`"min"` ou `"max"`). Par défaut `"max"`.
+#' @return Une valeur numérique si un chiffre est détecté, ou une catégorie (`"Beaucoup"`, `"Centaines"`, `"Milliers"`, `"Quelques uns"`, `"Non"`, etc.).
+
+    
+
   # Approche par regex : 
   potential_number = x_ %>%
     gsub(" ", "", .)%>%
@@ -329,8 +364,8 @@ remplacement = function(x_, option = "max"){
 #}
 
 data_ = data_ %>%
-  mutate(pop_clean_yes_no = sapply(q2_pop_phoques, remplacement_1),
-         pop_clean_max = sapply(q2_pop_phoques, remplacement))
+  mutate(clean_pop_yes_no = sapply(q2_pop_phoques, remplacement_phoques_1),
+         clean_pop_max = sapply(q2_pop_phoques, remplacement_phoques_population))
 
 ```
 
@@ -342,22 +377,13 @@ data_ = data_ %>%
 t(table(data_$profession))# Pour voir les fréquences
 ```
 
-::: fragment
-
 On a encore des problèmes d'encodage : je vous laisse y penser 
 
-:::
-
-::: incremental
 
 - Trouvez les dénominations en CSP les plus pertinentes
 - Regroupez les personnes dans la bonne CSP en : 
   - Modifiant la fonction `remplacement()`
   - Et en attribuant les CSP à une nouvelle variable
-  
-:::
-
----
 
 On peut utiliser deux variables : 
 
@@ -365,14 +391,13 @@ On peut utiliser deux variables :
 - Une de "bas" niveau : plus de détails
 
 
-::: fragment
+
 
 On peut utiliser un prétraitement des données et la fonction `startsWith(x, prefix)` pour rassembler tout ce qui commencerait par la même racine
 
-:::
 
+**Q5 : Utilisez `startsWith()` pour compléter la fonction suivante et rédigez la documentation**
 
------------
 
 ```{r, echo = T}
 
@@ -380,7 +405,12 @@ csp_questionnaire = c("Entreprise/tourisme", "Restauration/hôtellerie" , "Agric
                       "Cadre supérieur", "Employé", "Ouvrier")
 
 
-remplacement_questionnaire = function(x_){
+remplacement_professions = function(x_){
+  
+#' Classification des professions à partir d'un questionnaire
+#'
+
+
   x = x_%>%
     str_to_lower()%>%
     gsub("é", "e", .)%>%
@@ -393,11 +423,10 @@ remplacement_questionnaire = function(x_){
                                               "famille d'accueil", "tabac", "medical",
                                               "recruteur de donateurs pour association")){
     return("Employé.e")
-    
-    # Q5 : utilisez startsWith pour trouver les étudiants, collegiens etc
-  }else if( x %in% c('sans', 'rien', 
-                                                                                                   'sans emploi', 'chômeur',
-                                                                                                   'chômage', 'non', "femme au foyer")){
+  }else if(x %in% c('sans', 'rien', 'sans emploi', 'chômeur','chômage', 'non', "femme au foyer")){ 
+  
+  # COMPLETER L'EXPRESSION
+  
     return('Sans activité professionelle (hors retraite)')
   }else if(startsWith(x, 'retrait')){
     return('Retraité.e') 
@@ -424,12 +453,12 @@ remplacement_questionnaire = function(x_){
 
 ```{r}
 data_ = data_ %>%
-  mutate(professions_clean = sapply(profession, remplacement_questionnaire))
+  mutate(professions_clean = sapply(profession, remplacement_professions))
 ```
 
 ## Variables catégorielles non ordonnées (nominales) : nom des phoques
 
-Ici, on va adopter la même approche par fonction de `remplacement()`
+Ici, on va adopter la même approche par fonction de `remplacement_()`
 
 ```{r, echo =T}
 table(data_$q1_nom_phoques)
@@ -438,6 +467,28 @@ table(data_$q1_nom_phoques)
 On va prendre comme réponses possible : `oui`, `non`, `Partiel: veau marin` et `Partiel: phoque gris`
 
 **Question 6 : faites une fonction de `remplacement` en utilisant ce qu'on a vu**
+
+```{r}
+remplacement_phoques_noms = function(x){
+  
+#' Standardisation des réponses sur les espèces de phoques observées
+#'
+#' Cette fonction catégorise les réponses concernant la présence des espèces de phoques 
+#' (veau-marin et phoque gris) en les regroupant dans des classes standardisées.
+#'
+#' @param x Une chaîne de caractères correspondant à une réponse du questionnaire sur les phoques observés.
+#' @return Une chaîne de caractères standardisée : `"Oui"`, `"Non"`, `"Partiel : Veau-marin"`, `"Partiel : Phoque gris"`, ou la réponse initiale si elle ne correspond à aucune catégorie.
+    
+}
+
+
+# A EFFECTUER APRES AVOIR REMPLI LA FONCTION
+
+#data_ = data_ %>%
+#  mutate(clean_noms_phoques = sapply(q1_nom_phoques, remplacement_phoques_noms))
+
+```
+
 
 
 ## Variables catégorielles nominales multiples: avis sur les phoques
@@ -494,12 +545,6 @@ phrases_possibles = c("Il faut laisser la nature évoluer librement",
   - Qui prend la valeur 0 si absente, 1 si présente
   - Permet de numériser les variables *catégorielles* sans imposer d'ordre
 
-:::
-
-
-
-
-::: fragment
 
 ```{r, echo = T}
 
@@ -526,11 +571,8 @@ for (i in 1:nrow(data_)) {
   }
 }
 
-
-
 ```
 
-:::
 
 ```{r}
 
@@ -538,7 +580,7 @@ for (i in 1:nrow(data_)) {
 
 table_occurrences_df <- as.data.frame(table_occurrences)
 
-colnames(table_occurrences_df) = paste0("q_clean", c('nature_libre','surfréquentation', 'conflits', 
+colnames(table_occurrences_df) = paste0("q_clean_", c('nature_libre','surfréquentation', 'conflits', 
                                    'patrimoine','trop_veau', 'trop_gris','pas_plus_phoques',
                                    'trop_poisson','opportunité_économique', 'menace_économique',
                                    'groupe_travail', 'panneaux',
@@ -619,16 +661,12 @@ table_phoques = table_phoques %>%
 
 ## Variables catégorielles nominales multiples : loisirs
 
-::: incremental 
+
 - Il y a beaucoup trop de réponses uniques (64)
 - Il faut revenir aux résultats du questionnaire, et traiter notamment les réponses collées (variables catégorielles multiples)
 - On refait du one hot encoding
 
-
-:::
-
-
-::: fragment
+**Q7 : Convertir la matrice en dataframe pour une meilleure lisibilité et changez les noms des colonnes avec `clean`**
 
 ```{r, echo = T}
 
@@ -681,7 +719,7 @@ for (i in 1:nrow(data_)) {
 
 ```
 
-:::
+
 
 
 
@@ -705,9 +743,14 @@ data_clean = full_data %>%
            )
          )
 
+colnames(data_clean) = gsub("clean_", "", colnames(data_clean))
 
-
+write.xls(data_clean, here("data", "processed", "data_cleaned.xlsx"))
 ```
+## Documentation
 
+- Créez un fichier `.txt` ou `.md` qui détaille les données *brutes* et enregistrez le dans `/docs/README_rawdata.txt`
+- Créez un fichier `.txt` ou `md` qui détaille les transformations appliquées aux données et les fonctions utilisées, et enregistrez le dans `/docs/REAME_datacleaning.txt`
+- Updates le script `fonctions.R` avec les fonctions que l'on a utilisées : elles ne sont pas encore très modulaires ou beaucoup réutilisables, mais c'est un premier pas. 
 
 
